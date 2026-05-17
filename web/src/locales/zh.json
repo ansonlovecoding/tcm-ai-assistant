@@ -1,0 +1,123 @@
+{
+  "brand": {
+    "name": "岐黄智诊",
+    "subtitle": "传承千年医道 · 智启现代诊疗"
+  },
+  "intro": {
+    "seal": "辨证施治",
+    "title": "四步辨证 · 智能诊断",
+    "desc": "请依次完成以下四个步骤，系统将综合望诊、切诊与问诊信息，为您生成个性化辨证报告。"
+  },
+  "stepper": {
+    "step": "第",
+    "of": "步 / 共",
+    "step_unit": "步"
+  },
+  "steps": {
+    "info": {
+      "label": "基本信息",
+      "title": "第一步 · 填写基本信息",
+      "desc": "请填写以下信息，用于体质与辨证参考。"
+    },
+    "tongue": {
+      "label": "舌象采集",
+      "title": "第二步 · 采集舌象",
+      "desc": "请按照拍摄要点上传一张清晰的舌象照片。"
+    },
+    "pulse": {
+      "label": "脉象采集",
+      "title": "第三步 · 采集脉象",
+      "desc": "请佩戴脉诊外部设备，保持静坐，开始采集脉波。"
+    },
+    "diagnose": {
+      "label": "智能辨证",
+      "title": "第四步 · 启动智能辨证",
+      "desc": "确认前述信息无误后，启动 AI 综合辨证。"
+    }
+  },
+  "form": {
+    "age": "年龄",
+    "age_unit": "岁",
+    "age_placeholder": "请输入年龄",
+    "gender": "性别",
+    "gender_male": "男",
+    "gender_female": "女",
+    "gender_other": "其他",
+    "height": "身高",
+    "height_unit": "厘米",
+    "height_placeholder": "如 170",
+    "weight": "体重",
+    "weight_unit": "公斤",
+    "weight_placeholder": "如 65",
+    "required": "必填项"
+  },
+  "tongue": {
+    "instructions_title": "拍摄要点 · 请仔细阅读",
+    "tips": [
+      "选择自然光下拍摄，避免强烈黄光或阴影；勿使用闪光灯。",
+      "拍摄前 30 分钟内勿进食带色食物（如咖啡、果汁、火龙果等），勿刷舌苔。",
+      "正对镜头，自然伸出舌头，舌尖向下，放松勿用力。",
+      "保持舌面完整入镜，包含舌尖、舌中、舌根与两侧。",
+      "镜头距离约 15–20 厘米，对焦清晰，避免反光。"
+    ],
+    "upload_title": "上传舌象照片",
+    "upload_hint": "点击或拖拽图片到此处 · 支持 JPG / PNG",
+    "retake": "重新选择",
+    "change": "更换照片",
+    "preview_alt": "舌象预览"
+  },
+  "pulse": {
+    "device_title": "外部脉诊设备",
+    "device_status_disconnected": "设备未连接",
+    "device_status_connecting": "正在连接……",
+    "device_status_connected": "设备已连接",
+    "device_status_capturing": "正在采集脉波……",
+    "device_status_done": "采集完成",
+    "connect": "连接设备",
+    "disconnect": "断开连接",
+    "start": "开始采集",
+    "stop": "停止采集",
+    "restart": "重新采集",
+    "guidance_title": "采集须知",
+    "guidance": [
+      "请取静坐位，保持心绪平和约 5 分钟。",
+      "将设备腕带佩戴于左手寸口（桡动脉处）。",
+      "采集过程中请勿移动手臂或说话。",
+      "建议连续采集 30 秒以上，以获取稳定脉波。"
+    ],
+    "waveform_label": "脉波示意"
+  },
+  "diagnose": {
+    "summary_title": "信息确认",
+    "field_age": "年龄",
+    "field_gender": "性别",
+    "field_height": "身高",
+    "field_weight": "体重",
+    "field_tongue": "舌象",
+    "field_pulse": "脉象",
+    "value_uploaded": "已上传",
+    "value_missing": "未提供",
+    "value_captured": "已采集",
+    "start": "启动智能辨证",
+    "analyzing": "AI 正在综合辨证，请稍候……",
+    "result_title": "辨证参考报告",
+    "result_pattern": "辨证类型",
+    "result_pattern_value": "气阴两虚 · 肝郁脾虚（示例）",
+    "result_advice": "调理建议",
+    "result_advice_value": "宜疏肝健脾、益气养阴。规律作息，清淡饮食，适度运动；可参考代茶饮：太子参、麦冬、陈皮。",
+    "disclaimer": "※ 本报告仅供参考，最终诊断请咨询专业中医师。",
+    "restart": "重新开始"
+  },
+  "nav_btn": {
+    "prev": "上一步",
+    "next": "下一步"
+  },
+  "footer": {
+    "rights": "© 2026 岐黄智诊 · 仅供学习与研究使用，不构成医疗建议。",
+    "contact": "联系我们"
+  },
+  "lang": {
+    "switch": "EN",
+    "label": "English"
+  }
+}

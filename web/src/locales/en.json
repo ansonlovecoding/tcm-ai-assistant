@@ -1,0 +1,123 @@
+{
+  "brand": {
+    "name": "Qi-Huang AI",
+    "subtitle": "Ancient Wisdom · Modern Diagnosis"
+  },
+  "intro": {
+    "seal": "Pattern Differentiation",
+    "title": "Four Steps to AI-Assisted Diagnosis",
+    "desc": "Complete the four steps below. The system synthesizes observation, palpation, and inquiry to generate a personalized pattern report."
+  },
+  "stepper": {
+    "step": "Step",
+    "of": "of",
+    "step_unit": ""
+  },
+  "steps": {
+    "info": {
+      "label": "Patient Info",
+      "title": "Step 1 · Basic Information",
+      "desc": "Provide the following details to inform constitution and pattern analysis."
+    },
+    "tongue": {
+      "label": "Tongue Image",
+      "title": "Step 2 · Capture Tongue Image",
+      "desc": "Follow the photo guidance below and upload a clear tongue image."
+    },
+    "pulse": {
+      "label": "Pulse Wave",
+      "title": "Step 3 · Capture Pulse Wave",
+      "desc": "Wear the external pulse-diagnosis device, stay still, and begin capture."
+    },
+    "diagnose": {
+      "label": "AI Diagnosis",
+      "title": "Step 4 · Begin AI Diagnosis",
+      "desc": "Confirm the information above, then start the AI pattern analysis."
+    }
+  },
+  "form": {
+    "age": "Age",
+    "age_unit": "yrs",
+    "age_placeholder": "Enter age",
+    "gender": "Gender",
+    "gender_male": "Male",
+    "gender_female": "Female",
+    "gender_other": "Other",
+    "height": "Height",
+    "height_unit": "cm",
+    "height_placeholder": "e.g. 170",
+    "weight": "Weight",
+    "weight_unit": "kg",
+    "weight_placeholder": "e.g. 65",
+    "required": "Required"
+  },
+  "tongue": {
+    "instructions_title": "Photo Guidance · Please read carefully",
+    "tips": [
+      "Shoot under natural light. Avoid strong yellow lighting, shadows, and flash.",
+      "Avoid coloring foods (coffee, juice, dragon fruit, etc.) for 30 minutes before. Do not scrape the tongue coating.",
+      "Face the camera directly. Extend the tongue naturally with the tip pointing down; do not strain.",
+      "Frame the entire tongue surface — tip, middle, root, and both edges.",
+      "Hold the camera 15–20 cm away. Ensure sharp focus and no glare."
+    ],
+    "upload_title": "Upload Tongue Image",
+    "upload_hint": "Click or drag image here · JPG / PNG supported",
+    "retake": "Choose Again",
+    "change": "Change Image",
+    "preview_alt": "Tongue preview"
+  },
+  "pulse": {
+    "device_title": "External Pulse Device",
+    "device_status_disconnected": "Device disconnected",
+    "device_status_connecting": "Connecting…",
+    "device_status_connected": "Device connected",
+    "device_status_capturing": "Capturing pulse wave…",
+    "device_status_done": "Capture complete",
+    "connect": "Connect Device",
+    "disconnect": "Disconnect",
+    "start": "Start Capture",
+    "stop": "Stop Capture",
+    "restart": "Recapture",
+    "guidance_title": "Before You Begin",
+    "guidance": [
+      "Sit quietly for about 5 minutes to calm the breath.",
+      "Wear the device on the left wrist at the cun-kou (radial artery) position.",
+      "Do not move your arm or speak during capture.",
+      "Capture for at least 30 seconds for a stable waveform."
+    ],
+    "waveform_label": "Pulse waveform"
+  },
+  "diagnose": {
+    "summary_title": "Review",
+    "field_age": "Age",
+    "field_gender": "Gender",
+    "field_height": "Height",
+    "field_weight": "Weight",
+    "field_tongue": "Tongue",
+    "field_pulse": "Pulse",
+    "value_uploaded": "Uploaded",
+    "value_missing": "Not provided",
+    "value_captured": "Captured",
+    "start": "Begin AI Diagnosis",
+    "analyzing": "AI is analyzing your pattern, please wait…",
+    "result_title": "Pattern Reference Report",
+    "result_pattern": "Pattern",
+    "result_pattern_value": "Qi and Yin Deficiency · Liver Qi Stagnation with Spleen Deficiency (sample)",
+    "result_advice": "Suggestions",
+    "result_advice_value": "Soothe the liver, strengthen the spleen, supplement Qi and nourish Yin. Keep a regular schedule, eat lightly, exercise moderately. Reference herbal tea: Tai Zi Shen, Mai Dong, Chen Pi.",
+    "disclaimer": "※ This report is for reference only. Please consult a licensed TCM practitioner for diagnosis.",
+    "restart": "Start Over"
+  },
+  "nav_btn": {
+    "prev": "Back",
+    "next": "Next"
+  },
+  "footer": {
+    "rights": "© 2026 Qi-Huang AI · For research and learning only. Not medical advice.",
+    "contact": "Contact"
+  },
+  "lang": {
+    "switch": "中",
+    "label": "中文"
+  }
+}
