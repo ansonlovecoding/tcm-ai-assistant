@@ -1,22 +1,26 @@
-import { useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-export default function TonguePhoto({ image, onChange }) {
+export default function TonguePhoto({ file, onChange }) {
   const { t } = useTranslation()
   const inputRef = useRef(null)
   const [dragging, setDragging] = useState(false)
 
   const tips = t('tongue.tips', { returnObjects: true })
 
-  const handleFile = (file) => {
-    if (!file || !file.type.startsWith('image/')) return
-    const reader = new FileReader()
-    reader.onload = () => onChange(reader.result)
-    reader.readAsDataURL(file)
+  const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file])
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+    }
+  }, [previewUrl])
+
+  const handleFile = (f) => {
+    if (!f || !f.type.startsWith('image/')) return
+    onChange(f)
   }
 
   const onSelect = (e) => handleFile(e.target.files?.[0])
-
   const onDrop = (e) => {
     e.preventDefault()
     setDragging(false)
@@ -41,7 +45,7 @@ export default function TonguePhoto({ image, onChange }) {
       <div className="upload-card">
         <h3 className="instruction-title">{t('tongue.upload_title')}</h3>
 
-        {!image && (
+        {!previewUrl && (
           <div
             className={`dropzone ${dragging ? 'is-dragging' : ''}`}
             onClick={() => inputRef.current?.click()}
@@ -69,9 +73,9 @@ export default function TonguePhoto({ image, onChange }) {
           </div>
         )}
 
-        {image && (
+        {previewUrl && (
           <div className="preview">
-            <img src={image} alt={t('tongue.preview_alt')} />
+            <img src={previewUrl} alt={t('tongue.preview_alt')} />
             <button
               type="button"
               className="btn btn-ghost"
