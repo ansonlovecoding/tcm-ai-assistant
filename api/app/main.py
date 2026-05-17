@@ -1,4 +1,11 @@
-"""FastAPI entry point for the TCM diagnosis API."""
+"""FastAPI entry point for the TCM diagnosis API.
+
+Interactive documentation is available at:
+
+* `/docs`        — Swagger UI ("Try it out")
+* `/redoc`       — ReDoc reference layout
+* `/openapi.json` — raw OpenAPI 3.1 spec
+"""
 
 from __future__ import annotations
 
@@ -6,6 +13,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 from . import mock_data
 from .models import (
@@ -18,10 +26,62 @@ from .models import (
 )
 from .store import store
 
+API_DESCRIPTION = """
+Mock backend powering the **Qi-Huang AI / 岐黄智诊** single-page web app.
+
+The web flow is a four-step pipeline that maps directly onto these endpoints:
+
+| Step | Action                       | Endpoint                              |
+|------|------------------------------|---------------------------------------|
+| 1    | Patient basic info           | `POST /api/sessions`                  |
+| 2    | Upload tongue image          | `POST /api/sessions/{id}/tongue`      |
+| 3    | Submit pulse capture         | `POST /api/sessions/{id}/pulse`       |
+| 4    | Generate AI diagnosis        | `POST /api/sessions/{id}/diagnose`    |
+
+All user-facing strings are returned bilingually as `{ "zh": "...", "en": "..." }`
+so the frontend can pick the right locale without an extra round-trip.
+
+> ⚠ **Disclaimer.** Output is AI-generated and intended for research and
+> educational use only. It does **not** constitute medical advice.
+"""
+
+TAGS_METADATA = [
+    {
+        "name": "Health",
+        "description": "Liveness and readiness probes.",
+    },
+    {
+        "name": "Sessions",
+        "description": "Create and inspect a four-step diagnosis session.",
+    },
+    {
+        "name": "Tongue",
+        "description": "Step 2 — upload a tongue image and receive a (mock) analysis "
+                       "of body colour, coating and shape.",
+    },
+    {
+        "name": "Pulse",
+        "description": "Step 3 — submit a pulse capture from the external device and "
+                       "receive a (mock) pulse-type classification.",
+    },
+    {
+        "name": "Diagnose",
+        "description": "Step 4 — synthesise everything collected so far into a final "
+                       "pattern-differentiation report.",
+    },
+]
+
 app = FastAPI(
     title="TCM Diagnosis API",
-    description="Mock backend for the Qi-Huang AI / 岐黄智诊 single-page web app.",
+    summary="Mock backend for the Qi-Huang AI / 岐黄智诊 SPA.",
+    description=API_DESCRIPTION,
     version="0.1.0",
+    contact={"name": "TCM Assistant"},
+    license_info={"name": "For research and educational use only"},
+    openapi_tags=TAGS_METADATA,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
 )
 
 # CORS is harmless even with the Vite proxy and lets the API be hit directly
@@ -38,13 +98,33 @@ app.add_middleware(
 )
 
 
-@app.get("/api/health")
+@app.get("/", include_in_schema=False)
+def root() -> RedirectResponse:
+    """Convenience redirect to the Swagger UI."""
+    return RedirectResponse(url="/docs")
+
+
+@app.get(
+    "/api/health",
+    tags=["Health"],
+    summary="Liveness check",
+    response_description="Service status and current in-memory session count.",
+)
 def health() -> dict:
+    """Return `{"status": "ok"}` plus the number of sessions held in memory."""
     return {"status": "ok", "sessions": len(store.all())}
 
 
-@app.post("/api/sessions", response_model=SessionCreated, status_code=201)
+@app.post(
+    "/api/sessions",
+    response_model=SessionCreated,
+    status_code=201,
+    tags=["Sessions"],
+    summary="Create a diagnosis session",
+    response_description="The new session id together with the echoed patient info.",
+)
 def create_session(patient: PatientInfo) -> SessionCreated:
+    """Open a new diagnosis session for a patient (step 1 of the web flow)."""
     session = store.create(patient)
     return SessionCreated(
         session_id=session.id,
@@ -53,8 +133,19 @@ def create_session(patient: PatientInfo) -> SessionCreated:
     )
 
 
-@app.post("/api/sessions/{session_id}/tongue", response_model=TongueResult)
+@app.post(
+    "/api/sessions/{session_id}/tongue",
+    response_model=TongueResult,
+    tags=["Tongue"],
+    summary="Upload tongue image and analyse",
+    response_description="Mock tongue analysis (body colour, coating, shape, notes).",
+    responses={
+        400: {"description": "Uploaded file is not an image."},
+        404: {"description": "Session does not exist."},
+    },
+)
 async def upload_tongue(session_id: str, image: UploadFile = File(...)) -> TongueResult:
+    """Accept a single tongue image as multipart `image=@...` and return the analysis."""
     try:
         session = store.get(session_id)
     except KeyError:
@@ -79,8 +170,16 @@ async def upload_tongue(session_id: str, image: UploadFile = File(...)) -> Tongu
     )
 
 
-@app.post("/api/sessions/{session_id}/pulse", response_model=PulseResult)
+@app.post(
+    "/api/sessions/{session_id}/pulse",
+    response_model=PulseResult,
+    tags=["Pulse"],
+    summary="Submit a pulse capture and analyse",
+    response_description="Mock pulse analysis (type, rate, rhythm, strength, notes).",
+    responses={404: {"description": "Session does not exist."}},
+)
 def submit_pulse(session_id: str, sample: PulseSample) -> PulseResult:
+    """Accept a pulse capture from the external device and return the analysis."""
     try:
         session = store.get(session_id)
     except KeyError:
@@ -104,8 +203,16 @@ def submit_pulse(session_id: str, sample: PulseSample) -> PulseResult:
     )
 
 
-@app.post("/api/sessions/{session_id}/diagnose", response_model=DiagnosisResult)
+@app.post(
+    "/api/sessions/{session_id}/diagnose",
+    response_model=DiagnosisResult,
+    tags=["Diagnose"],
+    summary="Generate the AI pattern report",
+    response_description="Pattern, summary, lifestyle/diet/tea advice, and disclaimer.",
+    responses={404: {"description": "Session does not exist."}},
+)
 def diagnose(session_id: str) -> DiagnosisResult:
+    """Synthesise patient + tongue + pulse data into a final pattern report."""
     try:
         session = store.get(session_id)
     except KeyError:
@@ -119,8 +226,15 @@ def diagnose(session_id: str) -> DiagnosisResult:
     )
 
 
-@app.get("/api/sessions/{session_id}")
+@app.get(
+    "/api/sessions/{session_id}",
+    tags=["Sessions"],
+    summary="Inspect a session",
+    response_description="The full session state, including any analyses stored so far.",
+    responses={404: {"description": "Session does not exist."}},
+)
 def get_session(session_id: str) -> dict:
+    """Read everything the server currently knows about a session."""
     try:
         session = store.get(session_id)
     except KeyError:

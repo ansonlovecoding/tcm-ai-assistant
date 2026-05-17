@@ -1,0 +1,49 @@
+# Local dev environment for the TCM Assistant.
+#
+#   docker compose up --build       # build images and start everything
+#   docker compose up               # start, reusing built images
+#   docker compose down             # stop and remove containers
+#
+# Web:   http://localhost:5173
+# API:   http://localhost:8000  (docs: /docs)
+#
+# Source is bind-mounted, so saving a file reloads in both services.
+
+name: tcm-assistant
+
+services:
+  api:
+    build: ./api
+    container_name: tcm-api
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount only the package; requirements installed in the image stay intact.
+      - ./api/app:/app/app
+    environment:
+      PYTHONUNBUFFERED: "1"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health').status == 200 else 1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  web:
+    build: ./web
+    container_name: tcm-web
+    ports:
+      - "5173:5173"
+    volumes:
+      # Live source, but keep the container's node_modules (linux binaries).
+      - ./web:/app
+      - /app/node_modules
+    environment:
+      # Vite proxy target — uses the api service hostname on the compose network.
+      API_TARGET: "http://api:8000"
+      DOCKER: "1"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
