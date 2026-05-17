@@ -116,6 +116,7 @@ export default function App() {
   return (
     <div className="app">
       <div className="paper-texture" aria-hidden="true" />
+      <div className="taiji-bg" aria-hidden="true" />
       <Header />
       <main>
         <section className="intro">
