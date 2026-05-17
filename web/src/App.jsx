@@ -7,6 +7,7 @@ import PatientInfo from './components/steps/PatientInfo.jsx'
 import TonguePhoto from './components/steps/TonguePhoto.jsx'
 import PulseWave from './components/steps/PulseWave.jsx'
 import Diagnose from './components/steps/Diagnose.jsx'
+import { api } from './api.js'
 
 const STEP_KEYS = ['info', 'tongue', 'pulse', 'diagnose']
 
@@ -15,9 +16,16 @@ const initialPatient = { age: '', gender: '', height: '', weight: '' }
 export default function App() {
   const { t, i18n } = useTranslation()
   const [stepIndex, setStepIndex] = useState(0)
+
+  const [sessionId, setSessionId] = useState(null)
   const [patient, setPatient] = useState(initialPatient)
-  const [tongueImage, setTongueImage] = useState(null) // data URL
+  const [tongueFile, setTongueFile] = useState(null)
+  const [tongueAnalysis, setTongueAnalysis] = useState(null)
   const [pulseCaptured, setPulseCaptured] = useState(false)
+  const [pulseAnalysis, setPulseAnalysis] = useState(null)
+
+  const [transitioning, setTransitioning] = useState(false)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     document.documentElement.lang = i18n.language === 'zh' ? 'zh-CN' : 'en'
@@ -25,21 +33,55 @@ export default function App() {
   }, [i18n.language])
 
   const canAdvance = () => {
+    if (transitioning) return false
     if (stepIndex === 0) {
       return patient.age && patient.gender && patient.height && patient.weight
     }
-    if (stepIndex === 1) return !!tongueImage
+    if (stepIndex === 1) return !!tongueFile
     if (stepIndex === 2) return pulseCaptured
     return true
   }
 
-  const goNext = () => setStepIndex((i) => Math.min(i + 1, STEP_KEYS.length - 1))
-  const goPrev = () => setStepIndex((i) => Math.max(i - 1, 0))
+  const goNext = async () => {
+    setError(null)
+    try {
+      setTransitioning(true)
+      if (stepIndex === 0) {
+        // create session if needed
+        const sid = sessionId ?? (await api.createSession(patient)).session_id
+        setSessionId(sid)
+      } else if (stepIndex === 1) {
+        const sid = sessionId
+        if (!sid) throw new Error('missing session')
+        const result = await api.uploadTongue(sid, tongueFile)
+        setTongueAnalysis(result.analysis)
+      } else if (stepIndex === 2) {
+        const sid = sessionId
+        if (!sid) throw new Error('missing session')
+        const result = await api.submitPulse(sid, { durationMs: 30000, sampleRateHz: 200 })
+        setPulseAnalysis(result.analysis)
+      }
+      setStepIndex((i) => Math.min(i + 1, STEP_KEYS.length - 1))
+    } catch (e) {
+      setError(e.message || String(e))
+    } finally {
+      setTransitioning(false)
+    }
+  }
+
+  const goPrev = () => {
+    setError(null)
+    setStepIndex((i) => Math.max(i - 1, 0))
+  }
 
   const restart = () => {
     setPatient(initialPatient)
-    setTongueImage(null)
+    setTongueFile(null)
+    setTongueAnalysis(null)
     setPulseCaptured(false)
+    setPulseAnalysis(null)
+    setSessionId(null)
+    setError(null)
     setStepIndex(0)
   }
 
@@ -48,15 +90,18 @@ export default function App() {
       case 'info':
         return <PatientInfo value={patient} onChange={setPatient} />
       case 'tongue':
-        return <TonguePhoto image={tongueImage} onChange={setTongueImage} />
+        return <TonguePhoto file={tongueFile} onChange={setTongueFile} />
       case 'pulse':
         return <PulseWave captured={pulseCaptured} onCapturedChange={setPulseCaptured} />
       case 'diagnose':
         return (
           <Diagnose
+            sessionId={sessionId}
             patient={patient}
-            tongueImage={tongueImage}
+            tongueFile={tongueFile}
+            tongueAnalysis={tongueAnalysis}
             pulseCaptured={pulseCaptured}
+            pulseAnalysis={pulseAnalysis}
             onRestart={restart}
           />
         )
@@ -96,12 +141,14 @@ export default function App() {
 
               <div className="step-body">{renderStep()}</div>
 
+              {error && <p className="step-error">⚠ {error}</p>}
+
               {!isLast && (
                 <div className="step-nav">
                   <button
                     className="btn btn-ghost"
                     onClick={goPrev}
-                    disabled={stepIndex === 0}
+                    disabled={stepIndex === 0 || transitioning}
                   >
                     {t('nav_btn.prev')}
                   </button>
@@ -110,13 +157,13 @@ export default function App() {
                     onClick={goNext}
                     disabled={!canAdvance()}
                   >
-                    {t('nav_btn.next')}
+                    {transitioning ? '…' : t('nav_btn.next')}
                   </button>
                 </div>
               )}
               {isLast && (
                 <div className="step-nav">
-                  <button className="btn btn-ghost" onClick={goPrev}>
+                  <button className="btn btn-ghost" onClick={goPrev} disabled={transitioning}>
                     {t('nav_btn.prev')}
                   </button>
                 </div>
