@@ -9,6 +9,10 @@
 
 ## English
 
+### Architecture
+
+### ![ArchitectureDesign](README.assets/ArchitectureDesign.jpg)
+
 ### Project structure
 
 ```
@@ -121,6 +125,10 @@ This project is for **research and educational purposes only**. The AI output do
 ---
 
 ## 中文
+
+### 架构
+
+![ArchitectureDesign](README.assets/ArchitectureDesign-9080273.jpg)
 
 ### 项目结构
 
