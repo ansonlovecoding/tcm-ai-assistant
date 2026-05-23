@@ -183,6 +183,86 @@ python build_dataset.py     # produces train.npz / val.npz / test.npz
 
 The scripts reference `../dataset/` with relative paths, so they must be run from inside `pulse-analysis/preprocess/`.
 
+### Pulse analysis — model training
+
+`pulse-analysis/train.py` trains a 1D-CNN regressor that maps a 256-sample PPG window to a `(SBP, DBP)` pair.
+
+**Model** — `pulse-analysis/models/cnn1d.py` defines a three-block 1D-CNN:
+
+| Block | Layer                                  | Output channels |
+|-------|----------------------------------------|-----------------|
+| 1     | `Conv1d(1→32, k=5, pad=2)` + BN + ReLU + MaxPool(2)  | 32 |
+| 2     | `Conv1d(32→64, k=5, pad=2)` + BN + ReLU + MaxPool(2) | 64 |
+| 3     | `Conv1d(64→128, k=5, pad=2)` + BN + ReLU + AdaptiveAvgPool(1) | 128 |
+| Head  | `Flatten → Linear(128→64) → ReLU → Linear(64→2)`     | 2 (SBP, DBP) |
+
+Input shape is `(B, 256, 1)`; the model permutes to `(B, 1, 256)` internally before the conv stack.
+
+**Training setup** — defined inline in `train.py`:
+
+| Setting       | Value                                            |
+|---------------|--------------------------------------------------|
+| Loss          | `SmoothL1Loss` (Huber) — robust against BP label outliers |
+| Optimizer     | `Adam`, `lr = 1e-3`                              |
+| Batch size    | `2048`                                           |
+| Epochs        | `30`                                             |
+| Device        | CUDA if available, else CPU (auto-detected)      |
+| Best-model    | Saved to `best_model.pth` whenever val loss improves |
+
+**Console output** — `train.py` is heavily instrumented so you can see progress live:
+
+- Startup banner: device / GPU name, train + val sample counts, batches, batch size.
+- Per-batch line: `loss`, `mae`, running averages, batch time in ms, elapsed time within the epoch — for **both** train and val phases.
+- End-of-epoch summary: train/val loss + MAE, then a timing line with `train`, `val`, `epoch`, cumulative `total`, and `eta` for the remaining epochs.
+- Best-model save line including the achieving `val_loss`.
+- Final line: total wall-clock training time and best val loss.
+
+**Reference run** — on the dataset preprocessed by `build_dataset.py`, 30 epochs took ~44 min and reached:
+
+```
+Epoch 30/30 done  train_loss=8.6882 train_mae=9.17  |  val_loss=10.5998 val_mae=11.09
+  time: train=0:01:21  val=0:00:06  epoch=0:01:27  total=0:43:55  eta=0:00:00
+```
+
+**Running it.**
+
+```bash
+# from the repo root, with the .venv active
+pip install torch numpy scikit-learn
+
+cd pulse-analysis
+python train.py
+```
+
+The script loads `./dataset/train.npz` and `./dataset/val.npz` (relative paths), so it must be run from inside `pulse-analysis/`. The trained `best_model.pth` is written next to the script.
+
+### Pulse analysis — prediction
+
+`pulse-analysis/predict.py` wraps the trained checkpoint behind a single `BloodPressurePredictor` class so the API / agent code does not need to know about PyTorch.
+
+**Usage:**
+
+```python
+from predict import BloodPressurePredictor
+
+predictor = BloodPressurePredictor(model_path="best_model.pth")
+sbp, dbp = predictor.predict(ppg)        # ppg: 1-D array-like of 256 samples @125 Hz
+print(f"Predicted SBP: {sbp:.2f}")
+print(f"Predicted DBP: {dbp:.2f}")
+```
+
+**What the class does:**
+
+| Step               | Detail                                                                 |
+|--------------------|------------------------------------------------------------------------|
+| Device selection   | `cuda` if available, otherwise `cpu`. Can be overridden via the `device` kwarg. |
+| Model loading      | Instantiates `CNN1D`, loads `state_dict` from `model_path`, switches to `eval()`. |
+| `preprocess(ppg)`  | Casts to `float32`, z-score normalises with the same `+1e-8` epsilon as training, reshapes `(256,) → (256, 1) → (1, 256, 1)`. |
+| `predict(ppg)`     | Runs the model under `torch.no_grad()` and returns two Python floats `(sbp, dbp)` in mmHg. |
+
+**Important:** the input window must be **256 samples at 125 Hz** (≈ 2.048 s) — the same shape used during preprocessing and training. Different lengths will fail at the convolution stage.
+
+
 ### Disclaimer
 
 This project is for **research and educational purposes only**. The AI output does **not** constitute a medical diagnosis. Always consult a licensed TCM practitioner.
@@ -363,6 +443,85 @@ python build_dataset.py     # 生成 train.npz / val.npz / test.npz
 ```
 
 脚本中使用 `../dataset/` 的相对路径，必须在 `pulse-analysis/preprocess/` 目录下运行。
+
+### 脉象分析 — 模型训练
+
+`pulse-analysis/train.py` 训练一个 1D-CNN 回归模型，将 256 个采样点的 PPG 窗口映射到 `(SBP, DBP)` 一对血压值。
+
+**模型结构** — 定义在 `pulse-analysis/models/cnn1d.py`，由三个 1D-CNN 模块组成：
+
+| 模块  | 网络层                                                        | 输出通道 |
+|-------|---------------------------------------------------------------|----------|
+| 1     | `Conv1d(1→32, k=5, pad=2)` + BN + ReLU + MaxPool(2)            | 32       |
+| 2     | `Conv1d(32→64, k=5, pad=2)` + BN + ReLU + MaxPool(2)           | 64       |
+| 3     | `Conv1d(64→128, k=5, pad=2)` + BN + ReLU + AdaptiveAvgPool(1)  | 128      |
+| 输出头 | `Flatten → Linear(128→64) → ReLU → Linear(64→2)`               | 2（SBP、DBP）|
+
+输入形状为 `(B, 256, 1)`，模型内部会先 permute 为 `(B, 1, 256)` 再进入卷积层。
+
+**训练参数** — 直接写在 `train.py` 中：
+
+| 配置项       | 取值                                                            |
+|--------------|-----------------------------------------------------------------|
+| 损失函数     | `SmoothL1Loss`（Huber 损失）— 对血压标签中的异常值更稳健          |
+| 优化器       | `Adam`，`lr = 1e-3`                                              |
+| Batch size   | `2048`                                                           |
+| Epochs       | `30`                                                             |
+| 设备         | 自动选择 CUDA，无 GPU 时回落到 CPU                               |
+| 最优模型     | 验证集损失下降时，自动保存为 `best_model.pth`                    |
+
+**控制台输出** — `train.py` 内置丰富的日志，便于实时观察训练进度：
+
+- 启动横幅：设备 / GPU 名称、训练与验证样本数、batch 数、batch size。
+- 每个 batch 一行：`loss`、`mae`、累计平均值、单 batch 耗时（ms）、当前 epoch 已用时间 —— 训练与验证阶段均输出。
+- Epoch 结束汇总：训练 / 验证的 loss 与 MAE，以及一行计时：`train`、`val`、`epoch`、累计 `total`、剩余 `eta`。
+- 最优模型保存行，附带触发保存时的 `val_loss`。
+- 训练结束总耗时与最优 val_loss。
+
+**参考结果** — 在 `build_dataset.py` 处理过的数据集上训练 30 个 epoch，总耗时约 44 分钟：
+
+```
+Epoch 30/30 done  train_loss=8.6882 train_mae=9.17  |  val_loss=10.5998 val_mae=11.09
+  time: train=0:01:21  val=0:00:06  epoch=0:01:27  total=0:43:55  eta=0:00:00
+```
+
+**运行方式。**
+
+```bash
+# 在仓库根目录下，激活 .venv
+pip install torch numpy scikit-learn
+
+cd pulse-analysis
+python train.py
+```
+
+脚本以相对路径加载 `./dataset/train.npz` 与 `./dataset/val.npz`，需要在 `pulse-analysis/` 目录下运行。训练得到的 `best_model.pth` 会写在脚本同级目录。
+
+### 脉象分析 — 推理预测
+
+`pulse-analysis/predict.py` 将训练得到的权重封装在 `BloodPressurePredictor` 类中，API / 智能体侧无需了解 PyTorch 细节即可调用。
+
+**使用方式：**
+
+```python
+from predict import BloodPressurePredictor
+
+predictor = BloodPressurePredictor(model_path="best_model.pth")
+sbp, dbp = predictor.predict(ppg)        # ppg：长度为 256、采样率 125 Hz 的一维序列
+print(f"Predicted SBP: {sbp:.2f}")
+print(f"Predicted DBP: {dbp:.2f}")
+```
+
+**类的主要职责：**
+
+| 步骤              | 说明                                                                                  |
+|-------------------|---------------------------------------------------------------------------------------|
+| 设备选择          | 默认 `cuda`，无 GPU 时回落到 `cpu`，也可通过 `device` 参数显式指定。                  |
+| 模型加载          | 实例化 `CNN1D`，从 `model_path` 加载 `state_dict`，切换到 `eval()` 模式。              |
+| `preprocess(ppg)` | 转换为 `float32`、使用与训练相同的 `+1e-8` 容差做 Z-score 归一化，并 reshape 为 `(256,) → (256, 1) → (1, 256, 1)`。 |
+| `predict(ppg)`    | 在 `torch.no_grad()` 上下文中执行前向推理，返回两个 Python `float`，单位 mmHg。       |
+
+**注意：** 输入窗口必须为 **125 Hz 下的 256 个采样点**（≈ 2.048 秒），与预处理、训练阶段保持一致；长度不同会在卷积层报错。
 
 ### 免责声明
 
