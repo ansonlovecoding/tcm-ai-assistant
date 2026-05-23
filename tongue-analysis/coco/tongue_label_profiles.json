@@ -1,0 +1,178 @@
+{
+  "jiankangshe": {
+    "cn": "健康舌Healthy tongue",
+    "meaning": "模型检测到健康舌特征。The model detected features of a healthy tongue.",
+    "risks": [
+      "当前图像未显示明显异常信号 The current image does not show any obvious abnormal signals."
+    ],
+    "severity": 0
+  },
+  "botaishe": {
+    "cn": "剥苔舌Peeling tongue",
+    "meaning": "舌苔局部或大面积脱落，常作为胃阴不足、津液不足或消化功能异常的观察信号。Local or large-area loss of tongue coating is often seen as a sign of insufficient stomach yin, insufficient body fluids, or abnormal digestive function.",
+    "risks": [
+      "胃阴不足风险Risk of Stomach Yin Deficiency",
+      "消化功能异常风险Risk of Digestive Dysfunction"
+    ],
+    "severity": 2
+  },
+  "hongshe": {
+    "cn": "红舌Red tongue",
+    "meaning": "舌体偏红，常作为热象、炎症反应或阴虚内热的观察信号。A reddish tongue is often seen as a sign of heat, inflammation, or yin deficiency with internal heat.",
+    "risks": [
+      "内热/炎症风险Risk of internal heat/inflammation",
+      "阴虚内热风险Risk of internal heat due to yin deficiency"
+    ],
+    "severity": 2
+  },
+  "zishe": {
+    "cn": "紫舌Purple tongue",
+    "meaning": "舌色偏紫，常作为血液循环不畅、瘀血或缺氧相关问题的观察信号。A purplish tongue color is often seen as a sign of poor blood circulation, blood stasis, or hypoxia.",
+    "risks": [
+      "血瘀/循环不畅风险Risk of Blood Stasis/Poor Circulation"
+    ],
+    "severity": 3
+  },
+  "pangdashe": {
+    "cn": "胖大舌Chubby tongue",
+    "meaning": "舌体偏胖大，常作为湿重、脾胃运化不足的观察信号。A chubby tongue is often seen as a sign of excessive dampness or insufficient spleen function.",
+    "risks": [
+      "脾胃虚弱风险Risk of Spleen Deficiency",
+      "湿气偏重风险Risk of Excessive Dampness"
+    ],
+    "severity": 2
+  },
+  "shoushe": {
+    "cn": "瘦舌Thin tongue",
+    "meaning": "舌体偏瘦，常作为气血不足、阴液不足或营养状态偏弱的观察信号。A thin tongue is often seen as a sign of qi and blood deficiency, yin deficiency, or poor nutritional status.",
+    "risks": [
+      "气血不足风险Risk of Qi and Blood Deficiency",
+      "阴液不足风险Risk of Yin Deficiency"
+    ],
+    "severity": 2
+  },
+  "hongdianshe": {
+    "cn": "红点舌Red spots on the tongue",
+    "meaning": "舌面红点增多，常作为热象、炎症或局部刺激的观察信号。Red spots on the tongue are often seen as a sign of heat, inflammation, or local irritation.",
+    "risks": [
+      "热象/炎症风险Risk of Heat/Inflammation"
+    ],
+    "severity": 2
+  },
+  "liewenshe": {
+    "cn": "裂纹舌Cracked tongue",
+    "meaning": "舌面裂纹明显，常作为津液不足、阴虚或长期消化吸收状态异常的观察信号。A cracked tongue is often seen as a sign of insufficient body fluids, yin deficiency, or abnormal digestive function.",
+    "risks": [
+      "津液不足风险Risk of Insufficient Body Fluids",
+      "阴虚风险Risk of Yin Deficiency"
+    ],
+    "severity": 2
+  },
+  "chihenshe": {
+    "cn": "齿痕舌Dentate tongue",
+    "meaning": "舌边齿痕明显，常作为脾虚、湿重或水液代谢偏弱的观察信号。A dentate tongue is often seen as a sign of spleen deficiency, excessive dampness, or weak water metabolism.",
+    "risks": [
+      "脾虚湿重风险Risk of Spleen Deficiency and Excessive Dampness"
+    ],
+    "severity": 2
+  },
+  "baitaishe": {
+    "cn": "白苔舌White coating tongue",
+    "meaning": "舌苔偏白，常作为寒湿、脾胃功能偏弱或早期外感的观察信号。A white coating on the tongue is often seen as a sign of cold-dampness, weak spleen function, or early external contraction.",
+    "risks": [
+      "寒湿风险Risk of Cold-Dampness",
+      "脾胃功能偏弱风险Risk of Weak Spleen Function"
+    ],
+    "severity": 1
+  },
+  "huangtaishe": {
+    "cn": "黄苔舌Yellow coating tongue",
+    "meaning": "舌苔偏黄，常作为湿热、胃肠积热或炎症状态的观察信号。A yellow coating on the tongue is often seen as a sign of damp-heat, gastrointestinal accumulation of heat, or inflammatory state.",
+    "risks": [
+      "湿热风险Risk of Damp-Heat",
+      "胃肠积热风险Risk of Gastrointestinal Accumulation of Heat"
+    ],
+    "severity": 3
+  },
+  "heitaishe": {
+    "cn": "黑苔舌Black coating tongue",
+    "meaning": "舌苔偏黑，通常需要重点复核图像质量，并结合身体状态进行专业判断。If the tongue coating is dark, it is usually necessary to carefully review the image quality and make a professional judgment based on the patient's physical condition.",
+    "risks": [
+      "较高异常风险Risk of High Anomaly",
+      "需要人工复核Risk of Manual Review"
+    ],
+    "severity": 4
+  },
+  "huataishe": {
+    "cn": "滑苔舌Slimy coating tongue",
+    "meaning": "舌苔湿滑，常作为寒湿、痰湿或水液代谢偏弱的观察信号。A slimy coating on the tongue is often seen as a sign of cold-dampness, phlegm-dampness, or weak water metabolism.",
+    "risks": [
+      "寒湿/痰湿风险Risk of Cold-Dampness/Phlegm-Dampness"
+    ],
+    "severity": 2
+  },
+  "shenquao": {
+    "cn": "肾区凹陷信号Kidney area depression signal",
+    "meaning": "数据集标注的肾相关舌区形态信号，需结合其他舌象综合判断。The morphological signals of the kidney-related tongue region labeled in the dataset need to be combined with other tongue images for comprehensive judgment.",
+    "risks": [
+      "肾相关功能状态异常风险Risk of Kidney-Related Functional Abnormality"
+    ],
+    "severity": 2
+  },
+  "shenqutu": {
+    "cn": "肾区凸起信号Kidney area protrusion signal",
+    "meaning": "数据集标注的肾相关舌区形态信号，需结合其他舌象综合判断。The morphological signals of the kidney-related tongue region labeled in the dataset need to be combined with other tongue images for comprehensive judgment.",
+    "risks": [
+      "肾相关功能状态异常风险Risk of Kidney-Related Functional Abnormality"
+    ],
+    "severity": 2
+  },
+  "gandanao": {
+    "cn": "肝胆区凹陷信号Liver and Gallbladder area depression signal",
+    "meaning": "数据集标注的肝胆相关舌区形态信号，需结合其他舌象综合判断。The morphological signals of the liver and gallbladder-related tongue region labeled in the dataset need to be combined with other tongue images for comprehensive judgment.",
+    "risks": [
+      "肝胆相关功能状态异常风险Risk of Liver and Gallbladder-Related Functional Abnormality"
+    ],
+    "severity": 2
+  },
+  "gandantu": {
+    "cn": "肝胆区凸起信号Liver and Gallbladder area protrusion signal",
+    "meaning": "数据集标注的肝胆相关舌区形态信号，需结合其他舌象综合判断。The morphological signals of the liver and gallbladder-related tongue region labeled in the dataset need to be combined with other tongue images for comprehensive judgment.",
+    "risks": [
+      "肝胆相关功能状态异常风险Risk of Liver and Gallbladder-Related Functional Abnormality"
+    ],
+    "severity": 2
+  },
+  "piweiao": {
+    "cn": "脾胃区凹陷信号Spleen and Stomach area depression signal",
+    "meaning": "数据集标注的脾胃相关舌区形态信号，需结合其他舌象综合判断。The morphological signals of the spleen and stomach-related tongue region labeled in the dataset need to be combined with other tongue images for comprehensive judgment.",
+    "risks": [
+      "脾胃相关功能状态异常风险Risk of Spleen and Stomach-Related Functional Abnormality"
+    ],
+    "severity": 2
+  },
+  "piweitu": {
+    "cn": "脾胃区凸起信号Spleen and Stomach area protrusion signal",
+    "meaning": "数据集标注的脾胃相关舌区形态信号，需结合其他舌象综合判断。The morphological signals of the spleen and stomach-related tongue region labeled in the dataset need to be combined with other tongue images for comprehensive judgment.",
+    "risks": [
+      "脾胃相关功能状态异常风险Risk of Spleen and Stomach-Related Functional Abnormality"
+    ],
+    "severity": 2
+  },
+  "xinfeiao": {
+    "cn": "心肺区凹陷信号Heart and Lung area depression signal",
+    "meaning": "数据集标注的心肺相关舌区形态信号，需结合其他舌象综合判断。The morphological signals of the heart and lung-related tongue region labeled in the dataset need to be combined with other tongue images for comprehensive judgment.",
+    "risks": [
+      "心肺相关功能状态异常风险Risk of Heart and Lung-Related Functional Abnormality"
+    ],
+    "severity": 2
+  },
+  "xinfeitu": {
+    "cn": "心肺区凸起信号Heart and Lung area protrusion signal",
+    "meaning": "数据集标注的心肺相关舌区形态信号，需结合其他舌象综合判断。The morphological signals of the heart and lung-related tongue region labeled in the dataset need to be combined with other tongue images for comprehensive judgment.",
+    "risks": [
+      "心肺相关功能状态异常风险Risk of Heart and Lung-Related Functional Abnormality"
+    ],
+    "severity": 2
+  }
+}
