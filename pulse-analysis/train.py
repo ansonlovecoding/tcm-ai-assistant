@@ -2,6 +2,9 @@
 # ppg: (N, 256, 1)
 # sbp: (N, 1)
 # dbp: (N, 1)
+# Training Result
+# Epoch 30/30 done  train_loss=8.6882 train_mae=9.17  |  val_loss=10.5998 val_mae=11.09
+# time: train=0:01:21  val=0:00:06  epoch=0:01:27  total=0:43:55  eta=0:00:00
 
 import time
 from datetime import timedelta
