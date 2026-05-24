@@ -10,20 +10,18 @@ PREDICT_SCRIPT = BASE_DIR / "coco" / "predict_tongue_disease.py"
 MODEL_PATH = BASE_DIR / "runs" / "train-2" / "weights" / "best.pt"
 
 
-def generate_predict_result_json_from_bytes(
-    image_bytes: bytes,
-    output_json_path: Path | str = "predict_result.json",
-    conf: float = 0.25,
-) -> None:
+def generate_predict_result_json_from_bytes(image_bytes: bytes) -> str:
     """
     输入图片 bytes，调用 coco/predict_tongue_disease.py，
-    直接生成 predict_result.json 文件。
-    """
-    output_json_path = Path(output_json_path)
+    返回 JSON 格式的字符串。
 
+    临时图片和临时 predict_result.json 会在函数结束后自动删除。
+    """
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_dir = Path(temp_dir)
+
         image_path = temp_dir / "input_image.jpg"
+        result_json_path = temp_dir / "predict_result.json"
 
         image_path.write_bytes(image_bytes)
 
@@ -34,10 +32,12 @@ def generate_predict_result_json_from_bytes(
             str(MODEL_PATH),
             "--image",
             str(image_path),
-            "--conf",
-            str(conf),
             "--save-json",
-            str(output_json_path),
+            str(result_json_path),
         ]
 
         subprocess.run(command, check=True)
+
+        json_string = result_json_path.read_text(encoding="utf-8")
+
+    return json_string

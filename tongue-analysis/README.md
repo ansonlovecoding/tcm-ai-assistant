@@ -93,7 +93,7 @@ http://127.0.0.1:8000/docs
 D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\runs\shezhenv3_coco\predict_result.json
 ```
 ## 函数包装
-
-输入：图片的bytes值
-输出：返回识别结果的json文件，文件名：predict_result.json，路径：\tongue-analysis根目录下
+函数：predict_result_from_bytes.py, 路径：tongue-analysis根目录下
+输入：图片的bytes值以
+输出：返回识别结果的json格式字符串
 
