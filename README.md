@@ -22,7 +22,7 @@ code/
 ├── ai-agent/         AI agent that synthesises patient info, tongue and pulse results
 │                     into a TCM pattern differentiation
 ├── tongue-analysis/  Model training & inference for tongue images
-├── pulse-analysis/   Model training & inference for pulse waveforms
+├── pulse/   Model training & inference for pulse waveforms, predict SBP/DBP 
 ├── docker-compose.yml
 ├── .venv/            Local Python 3.10 virtualenv (created by the developer)
 └── README.md
@@ -30,13 +30,13 @@ code/
 
 Module responsibilities:
 
-| Module            | Role                                                                                  |
-|-------------------|---------------------------------------------------------------------------------------|
+| Module            | Role                                                                                                                      |
+|-------------------|---------------------------------------------------------------------------------------------------------------------------|
 | `web`             | Four-step UI: patient info → tongue photo → pulse capture → AI diagnosis. Traditional Chinese styling, Chinese & English. |
-| `api`             | FastAPI HTTP layer. Validates input, stores sessions, returns bilingual analyses.     |
-| `ai-agent`        | Orchestrates LLM + retrieval to produce the final pattern report (planned).           |
-| `tongue-analysis` | Vision model for tongue body / coating / shape (planned).                             |
-| `pulse-analysis`  | Signal-processing & classification of the 28 classical pulse types (planned).         |
+| `api`             | FastAPI HTTP layer. Validates input, stores sessions, returns bilingual analyses.                                         |
+| `ai-agent`        | Orchestrates LLM + retrieval to produce the final pattern report (planned).                                               |
+| `tongue-analysis` | Vision model for tongue body / coating / shape (planned).                                                                 |
+| `pulse`  | Signal-processing & prediction of SBP/DBP.                                                                                |
 
 ### Quick start — Docker
 
@@ -120,7 +120,7 @@ Endpoints are grouped by tag (`Health` · `Sessions` · `Tongue` · `Pulse` · `
 
 ### Pulse analysis — dataset preprocessing
 
-The `pulse-analysis/` module ships with a small pipeline that turns the raw [UCI Cuff-Less Blood Pressure Estimation](https://archive.ics.uci.edu/dataset/340/cuff+less+blood+pressure+estimation) records into model-ready PPG windows with SBP / DBP labels.
+The `pulse/` module ships with a small pipeline that turns the raw [UCI Cuff-Less Blood Pressure Estimation](https://archive.ics.uci.edu/dataset/340/cuff+less+blood+pressure+estimation) records into model-ready PPG windows with SBP / DBP labels.
 
 **Source data.** The dataset is distributed as MATLAB v7.3 `.mat` files (`Part_1.mat` … `Part_4.mat`), each a cell array of variable-length records. Every record is an `(N, 3)` matrix sampled at 125 Hz, where the three channels are:
 
@@ -130,17 +130,17 @@ The `pulse-analysis/` module ships with a small pipeline that turns the raw [UCI
 | 1       | ABP    | Invasive arterial blood pressure (mmHg) — source of SBP / DBP labels |
 | 2       | ECG    | Channel-II electrocardiogram (not used downstream)                |
 
-Download the four parts and place them under `pulse-analysis/dataset/`:
+Download the four parts and place them under `pulse/dataset/`:
 
 ```
-pulse-analysis/dataset/
+pulse/dataset/
 ├── Part_1.mat
 ├── Part_2.mat
 ├── Part_3.mat
 └── Part_4.mat
 ```
 
-**Scripts.** Everything lives in `pulse-analysis/preprocess/`:
+**Scripts.** Everything lives in `pulse/preprocess/`:
 
 | Script              | Purpose                                                                                                  |
 |---------------------|----------------------------------------------------------------------------------------------------------|
@@ -160,7 +160,7 @@ pulse-analysis/dataset/
 5. **Reshape** — PPG windows become `(256, 1)` so they can be stacked into `(N, 256, 1)` tensors.
 6. **Split** — windows are split 80 / 10 / 10 into train / val / test with a fixed `random_state=42` for reproducibility.
 
-**Outputs.** Three NumPy archives are written to `pulse-analysis/dataset/`:
+**Outputs.** Three NumPy archives are written to `pulse/dataset/`:
 
 | File         | Keys                  | Shape                                |
 |--------------|-----------------------|--------------------------------------|
@@ -174,20 +174,20 @@ pulse-analysis/dataset/
 # from the repo root, with the .venv active
 pip install h5py numpy scikit-learn matplotlib
 
-cd pulse-analysis/preprocess
+cd pulse/preprocess
 
 python data_inspect.py      # optional — print record shape / duration
 python data_visualize.py    # optional — write plot.png of one record
 python build_dataset.py     # produces train.npz / val.npz / test.npz
 ```
 
-The scripts reference `../dataset/` with relative paths, so they must be run from inside `pulse-analysis/preprocess/`.
+The scripts reference `../dataset/` with relative paths, so they must be run from inside `pulse/preprocess/`.
 
 ### Pulse analysis — model training
 
-`pulse-analysis/train.py` trains a 1D-CNN regressor that maps a 256-sample PPG window to a `(SBP, DBP)` pair.
+`pulse/train.py` trains a 1D-CNN regressor that maps a 256-sample PPG window to a `(SBP, DBP)` pair.
 
-**Model** — `pulse-analysis/models/cnn1d.py` defines a three-block 1D-CNN:
+**Model** — `pulse/models/cnn1d.py` defines a three-block 1D-CNN:
 
 | Block | Layer                                  | Output channels |
 |-------|----------------------------------------|-----------------|
@@ -230,15 +230,15 @@ Epoch 30/30 done  train_loss=8.6882 train_mae=9.17  |  val_loss=10.5998 val_mae=
 # from the repo root, with the .venv active
 pip install torch numpy scikit-learn
 
-cd pulse-analysis
+cd pulse
 python train.py
 ```
 
-The script loads `./dataset/train.npz` and `./dataset/val.npz` (relative paths), so it must be run from inside `pulse-analysis/`. The trained `best_model.pth` is written next to the script.
+The script loads `./dataset/train.npz` and `./dataset/val.npz` (relative paths), so it must be run from inside `pulse/`. The trained `best_model.pth` is written next to the script.
 
 ### Pulse analysis — prediction
 
-`pulse-analysis/predict.py` wraps the trained checkpoint behind a single `BloodPressurePredictor` class so the API / agent code does not need to know about PyTorch.
+`pulse/predict.py` wraps the trained checkpoint behind a single `BloodPressurePredictor` class so the API / agent code does not need to know about PyTorch.
 
 **Usage:**
 
@@ -283,7 +283,7 @@ code/
 ├── api/              FastAPI 服务，向 web 端提供所需接口
 ├── ai-agent/         智能体：根据基本信息、舌象与脉象生成中医辨证报告
 ├── tongue-analysis/  舌象图像模型的训练与推理
-├── pulse-analysis/   脉象信号的训练与推理
+├── pulse/   脉象信号的训练与推理，预测舒张压和收缩压
 ├── docker-compose.yml
 ├── .venv/            本地 Python 3.10 虚拟环境（开发者自行创建）
 └── README.md
@@ -291,13 +291,13 @@ code/
 
 模块职责：
 
-| 模块               | 说明                                                                         |
-|--------------------|------------------------------------------------------------------------------|
+| 模块               | 说明                                             |
+|--------------------|------------------------------------------------|
 | `web`              | 四步式问诊界面：基本信息 → 舌象采集 → 脉象采集 → 智能辨证。古典中医风格，中英双语。 |
-| `api`              | FastAPI 接口层，校验请求、维护会话、返回中英双语的辨证数据。                  |
-| `ai-agent`         | 调度 LLM 与知识检索，输出综合辨证报告（规划中）。                            |
-| `tongue-analysis`  | 舌质、舌苔、舌形的视觉模型（规划中）。                                       |
-| `pulse-analysis`   | 二十八脉的信号处理与分类（规划中）。                                         |
+| `api`              | FastAPI 接口层，校验请求、维护会话、返回中英双语的辨证数据。             |
+| `ai-agent`         | 调度 LLM 与知识检索，输出综合辨证报告（规划中）。                    |
+| `tongue-analysis`  | 舌质、舌苔、舌形的视觉模型（规划中）。                            |
+| `pulse`   | 根据脉搏预测心脏的舒张压和收缩压                               |
 
 ### 快速启动 — Docker
 
@@ -381,7 +381,7 @@ open http://localhost:8000/docs    # macOS — 或直接在浏览器打开
 
 ### 脉象分析 — 数据集预处理
 
-`pulse-analysis/` 模块附带一套完整的预处理流水线，将公开数据集 [UCI Cuff-Less Blood Pressure Estimation](https://archive.ics.uci.edu/dataset/340/cuff+less+blood+pressure+estimation) 中的原始记录，转换为带有 SBP / DBP 标签、可直接喂给模型的 PPG 信号窗口。
+`pulse/` 模块附带一套完整的预处理流水线，将公开数据集 [UCI Cuff-Less Blood Pressure Estimation](https://archive.ics.uci.edu/dataset/340/cuff+less+blood+pressure+estimation) 中的原始记录，转换为带有 SBP / DBP 标签、可直接喂给模型的 PPG 信号窗口。
 
 **原始数据。** 数据集以 MATLAB v7.3 的 `.mat` 文件形式发布（`Part_1.mat` … `Part_4.mat`），每个文件是一组长度不等的记录。每条记录为 `(N, 3)` 矩阵，采样率为 125 Hz，三个通道分别是：
 
@@ -391,17 +391,17 @@ open http://localhost:8000/docs    # macOS — 或直接在浏览器打开
 | 1    | ABP  | 有创动脉血压（mmHg）— 用于生成 SBP / DBP 标签            |
 | 2    | ECG  | II 导联心电（本流程暂不使用）                            |
 
-下载四个 part，放到 `pulse-analysis/dataset/` 目录下：
+下载四个 part，放到 `pulse/dataset/` 目录下：
 
 ```
-pulse-analysis/dataset/
+pulse/dataset/
 ├── Part_1.mat
 ├── Part_2.mat
 ├── Part_3.mat
 └── Part_4.mat
 ```
 
-**脚本说明。** 所有脚本都位于 `pulse-analysis/preprocess/`：
+**脚本说明。** 所有脚本都位于 `pulse/preprocess/`：
 
 | 脚本                | 作用                                                                                |
 |---------------------|-------------------------------------------------------------------------------------|
@@ -421,7 +421,7 @@ pulse-analysis/dataset/
 5. **形状调整** — PPG 窗口扩展为 `(256, 1)`，便于堆叠为 `(N, 256, 1)` 的张量。
 6. **数据集划分** — 全部窗口按 80 % / 10 % / 10 % 划分为 train / val / test，使用固定的 `random_state=42` 保证可复现。
 
-**输出文件。** 在 `pulse-analysis/dataset/` 下生成三份 NumPy 归档：
+**输出文件。** 在 `pulse/dataset/` 下生成三份 NumPy 归档：
 
 | 文件         | 字段                  | 形状                                                |
 |--------------|-----------------------|-----------------------------------------------------|
@@ -435,20 +435,20 @@ pulse-analysis/dataset/
 # 在仓库根目录下，激活 .venv
 pip install h5py numpy scikit-learn matplotlib
 
-cd pulse-analysis/preprocess
+cd pulse/preprocess
 
 python data_inspect.py      # 可选：打印记录形状与时长
 python data_visualize.py    # 可选：生成 plot.png，可视化首条记录
 python build_dataset.py     # 生成 train.npz / val.npz / test.npz
 ```
 
-脚本中使用 `../dataset/` 的相对路径，必须在 `pulse-analysis/preprocess/` 目录下运行。
+脚本中使用 `../dataset/` 的相对路径，必须在 `pulse/preprocess/` 目录下运行。
 
 ### 脉象分析 — 模型训练
 
-`pulse-analysis/train.py` 训练一个 1D-CNN 回归模型，将 256 个采样点的 PPG 窗口映射到 `(SBP, DBP)` 一对血压值。
+`pulse/train.py` 训练一个 1D-CNN 回归模型，将 256 个采样点的 PPG 窗口映射到 `(SBP, DBP)` 一对血压值。
 
-**模型结构** — 定义在 `pulse-analysis/models/cnn1d.py`，由三个 1D-CNN 模块组成：
+**模型结构** — 定义在 `pulse/models/cnn1d.py`，由三个 1D-CNN 模块组成：
 
 | 模块  | 网络层                                                        | 输出通道 |
 |-------|---------------------------------------------------------------|----------|
@@ -491,15 +491,15 @@ Epoch 30/30 done  train_loss=8.6882 train_mae=9.17  |  val_loss=10.5998 val_mae=
 # 在仓库根目录下，激活 .venv
 pip install torch numpy scikit-learn
 
-cd pulse-analysis
+cd pulse
 python train.py
 ```
 
-脚本以相对路径加载 `./dataset/train.npz` 与 `./dataset/val.npz`，需要在 `pulse-analysis/` 目录下运行。训练得到的 `best_model.pth` 会写在脚本同级目录。
+脚本以相对路径加载 `./dataset/train.npz` 与 `./dataset/val.npz`，需要在 `pulse/` 目录下运行。训练得到的 `best_model.pth` 会写在脚本同级目录。
 
 ### 脉象分析 — 推理预测
 
-`pulse-analysis/predict.py` 将训练得到的权重封装在 `BloodPressurePredictor` 类中，API / 智能体侧无需了解 PyTorch 细节即可调用。
+`pulse/predict.py` 将训练得到的权重封装在 `BloodPressurePredictor` 类中，API / 智能体侧无需了解 PyTorch 细节即可调用。
 
 **使用方式：**
 

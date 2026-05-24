@@ -1,5 +1,5 @@
 .venv
 .idea
 .claude
-pulse-analysis/dataset
-pulse-analysis/preprocess/plot.png
+pulse/dataset
+pulse/preprocess/plot.png

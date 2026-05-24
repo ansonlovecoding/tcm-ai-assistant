@@ -1,14 +1,8 @@
-# How to use this predictor
-#  = BloodPressurePredictor(
-#     model_path="best_model.pth"
-# )
-# sbp, dbp = predictor.predict(ppg)
-# print(f"Predicted SBP: {sbp:.2f}")
-# print(f"Predicted DBP: {dbp:.2f}")
-
 import torch
 import numpy as np
 from models.cnn1d import CNN1D
+from pulse.mock_ppg import MockPpg
+
 
 class BloodPressurePredictor:
 
@@ -86,3 +80,12 @@ class BloodPressurePredictor:
         dbp = float(pred[1])
 
         return sbp, dbp
+
+# How to use this predictor
+# predictor = BloodPressurePredictor(
+#     model_path="best_model.pth"
+# )
+# ppg = MockPpg().ppg
+# sbp, dbp = predictor.predict(ppg)
+# print(f"Predicted SBP: {sbp:.2f}")
+# print(f"Predicted DBP: {dbp:.2f}")
