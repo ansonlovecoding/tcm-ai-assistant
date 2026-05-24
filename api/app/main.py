@@ -22,9 +22,11 @@ from .models import (
     PulseResult,
     PulseSample,
     SessionCreated,
-    TongueResult,
+    TongueResult, PulseAnalysis,
 )
 from .store import store
+from pulse.mock_ppg import MockPpg
+from pulse.predict import BloodPressurePredictor
 
 API_DESCRIPTION = """
 Mock backend powering the **Qi-Huang AI / 岐黄智诊** single-page web app.
@@ -185,11 +187,16 @@ def submit_pulse(session_id: str, sample: PulseSample) -> PulseResult:
     except KeyError:
         raise HTTPException(status_code=404, detail="session not found")
 
-    waveform = sample.waveform or mock_data.mock_pulse_waveform(
-        sample.duration_ms, sample.sample_rate_hz
-    )
+    # TODO: change to real data after integrate the device
+    # waveform = sample.waveform
+    waveform = MockPpg().ppg
     capture_id = uuid4().hex[:10]
-    analysis = mock_data.mock_pulse_analysis(session_id, capture_id, len(waveform))
+
+    predictor = BloodPressurePredictor()
+    sbp, dbp = predictor.predict(waveform)
+    analysis = PulseAnalysis(sbp=sbp, dbp=dbp)
+    print(f"Predicted SBP: {sbp:.2f}")
+    print(f"Predicted DBP: {dbp:.2f}")
 
     session.pulse_capture_id = capture_id
     session.pulse_sample_count = len(waveform)

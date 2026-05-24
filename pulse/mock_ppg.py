@@ -27,13 +27,13 @@ class MockPpg:
         # shape: (256,1)
         self.ppg = ppg
 
-ppgMock = MockPpg()
-print("shape:", ppgMock.ppg.shape)
-print(ppgMock.ppg[:10])
-
-# plot
-plt.plot(ppgMock.ppg)
-plt.title("Mock PPG Signal")
-plt.xlabel("Time")
-plt.ylabel("Amplitude")
-plt.show()
+# ppgMock = MockPpg()
+# print("shape:", ppgMock.ppg.shape)
+# print(ppgMock.ppg[:10])
+#
+# # plot
+# plt.plot(ppgMock.ppg)
+# plt.title("Mock PPG Signal")
+# plt.xlabel("Time")
+# plt.ylabel("Amplitude")
+# plt.show()

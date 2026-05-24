@@ -63,7 +63,7 @@ export default function Diagnose({
     {
       label: t('diagnose.field_pulse'),
       value: pulseAnalysis
-        ? `${pickLang(pulseAnalysis.pulse_type, lang)} · ${pulseAnalysis.rate_bpm} bpm`
+        ? `SBP: ${pulseAnalysis.sbp.toFixed(2)} mmHg, DBP: ${pulseAnalysis.dbp.toFixed(2)} mmHg`
         : pulseCaptured
           ? t('diagnose.value_captured')
           : t('diagnose.value_missing')

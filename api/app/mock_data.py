@@ -46,39 +46,6 @@ TONGUE_VARIANTS: list[TongueAnalysis] = [
     ),
 ]
 
-PULSE_VARIANTS: list[PulseAnalysis] = [
-    PulseAnalysis(
-        pulse_type=BilingualText(zh="弦细脉", en="Wiry and thin pulse"),
-        rate_bpm=78,
-        rhythm=BilingualText(zh="节律规整", en="Regular rhythm"),
-        strength=BilingualText(zh="中等偏弱", en="Moderately weak"),
-        notes=BilingualText(
-            zh="多见于肝郁、阴血不足。",
-            en="Often seen in liver Qi stagnation with Yin/blood deficiency.",
-        ),
-    ),
-    PulseAnalysis(
-        pulse_type=BilingualText(zh="沉缓脉", en="Deep and slow pulse"),
-        rate_bpm=64,
-        rhythm=BilingualText(zh="节律规整", en="Regular rhythm"),
-        strength=BilingualText(zh="较弱", en="Weak"),
-        notes=BilingualText(
-            zh="多见于阳虚、寒湿内停。",
-            en="Often seen in Yang deficiency with internal cold-damp.",
-        ),
-    ),
-    PulseAnalysis(
-        pulse_type=BilingualText(zh="滑数脉", en="Slippery and rapid pulse"),
-        rate_bpm=92,
-        rhythm=BilingualText(zh="节律规整", en="Regular rhythm"),
-        strength=BilingualText(zh="有力", en="Strong"),
-        notes=BilingualText(
-            zh="多见于痰热、湿热内蕴。",
-            en="Often seen in phlegm-heat or damp-heat patterns.",
-        ),
-    ),
-]
-
 PATTERN_LIBRARY: list[tuple[BilingualText, BilingualText, DiagnosisAdvice]] = [
     (
         BilingualText(zh="气阴两虚 · 肝郁脾虚", en="Qi-Yin Deficiency with Liver Qi Stagnation and Spleen Deficiency"),
@@ -156,34 +123,6 @@ def mock_tongue_analysis(session_id: str, image_bytes: bytes) -> TongueAnalysis:
     return _pick(seed, TONGUE_VARIANTS)
 
 
-def mock_pulse_analysis(session_id: str, capture_id: str, sample_count: int) -> PulseAnalysis:
-    seed = f"pulse:{session_id}:{capture_id}:{sample_count}"
-    return _pick(seed, PULSE_VARIANTS)
-
-
-def mock_pulse_waveform(duration_ms: int, sample_rate_hz: int) -> list[float]:
-    """Generate a plausible pulse-like waveform for the given duration."""
-    import math
-
-    total = max(1, int((duration_ms / 1000) * sample_rate_hz))
-    samples: list[float] = []
-    rng = random.Random(duration_ms * 1000 + sample_rate_hz)
-    bpm = rng.randint(60, 90)
-    period = 60 / bpm  # seconds per beat
-    for i in range(total):
-        t = i / sample_rate_hz
-        phase = (t % period) / period
-        # main systolic peak around 0.18, dicrotic notch around 0.45
-        val = (
-            math.exp(-((phase - 0.18) ** 2) / 0.004) * 1.0
-            + math.exp(-((phase - 0.45) ** 2) / 0.01) * 0.35
-            - 0.08
-        )
-        val += rng.gauss(0, 0.015)
-        samples.append(round(val, 4))
-    return samples
-
-
 def mock_diagnosis(
     session_id: str,
     patient: PatientInfo,
@@ -192,7 +131,7 @@ def mock_diagnosis(
 ) -> tuple[BilingualText, BilingualText, DiagnosisAdvice]:
     seed = (
         f"dx:{session_id}:{patient.age}:{patient.gender}:"
-        f"{tongue and tongue.body_color.en}:{pulse and pulse.pulse_type.en}"
+        f"{tongue and tongue.body_color.en}"
     )
     return _pick(seed, PATTERN_LIBRARY)
 

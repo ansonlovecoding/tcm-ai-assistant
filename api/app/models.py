@@ -90,31 +90,20 @@ class TongueResult(BaseModel):
 
 class PulseSample(BaseModel):
     """Capture metadata submitted from the external pulse-diagnosis device."""
-
-    duration_ms: conint(gt=0, le=120_000) = Field(
-        30_000, description="Capture duration in milliseconds (max 120 000)."
-    )
-    sample_rate_hz: conint(gt=0, le=2000) = Field(
-        200, description="Sampling rate in Hz."
-    )
-    waveform: Optional[list[float]] = Field(
+    waveform: list[float] = Field(
         None,
-        description="Optional raw samples. If omitted, the server mocks a plausible waveform.",
+        description="pulse sample data, length should be more than 256",
     )
 
     model_config = ConfigDict(
         json_schema_extra={
-            "example": {"duration_ms": 30000, "sample_rate_hz": 200}
+            "example": {"waveform": [1.29, 1.2]}
         }
     )
 
-
 class PulseAnalysis(BaseModel):
-    pulse_type: BilingualText = Field(..., description="Classical pulse name (e.g. 弦细).")
-    rate_bpm: int = Field(..., description="Heart rate in beats per minute.")
-    rhythm: BilingualText
-    strength: BilingualText
-    notes: BilingualText
+    sbp: float = Field(..., description="SBP (Systolic Blood Pressure)")
+    dbp: float = Field(..., description="DBP (Diastolic Blood Pressure)")
 
 
 class PulseResult(BaseModel):
@@ -128,16 +117,9 @@ class PulseResult(BaseModel):
             "example": {
                 "session_id": "9bdee0b2aea1",
                 "capture_id": "785a38a8cf",
-                "sample_count": 6000,
                 "analysis": {
-                    "pulse_type": {"zh": "弦细脉", "en": "Wiry and thin pulse"},
-                    "rate_bpm": 78,
-                    "rhythm": {"zh": "节律规整", "en": "Regular rhythm"},
-                    "strength": {"zh": "中等偏弱", "en": "Moderately weak"},
-                    "notes": {
-                        "zh": "多见于肝郁、阴血不足。",
-                        "en": "Often seen in liver Qi stagnation with Yin/blood deficiency.",
-                    },
+                    "sbp": 148.92,
+                    "dbp": 61.52
                 },
             }
         }

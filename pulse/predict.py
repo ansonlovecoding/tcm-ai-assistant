@@ -1,12 +1,17 @@
 import torch
 import numpy as np
-from models.cnn1d import CNN1D
+from pulse.models.cnn1d import CNN1D
 from pulse.mock_ppg import MockPpg
 
 
 class BloodPressurePredictor:
 
-    def __init__(self, model_path, device=None):
+    def __init__(self, model_path=None, device=None):
+        # load model
+        if model_path is None:
+            self.model_path = 'pulse/best_model.pth'
+        else:
+            self.model_path = model_path
 
         # choose device
         if device is None:
@@ -21,7 +26,7 @@ class BloodPressurePredictor:
 
         # load trained weights
         self.model.load_state_dict(
-            torch.load(model_path, map_location=self.device)
+            torch.load(self.model_path, map_location=self.device)
         )
 
         # inference mode
