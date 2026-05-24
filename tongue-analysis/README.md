@@ -71,6 +71,15 @@ E:\Software\python310\python.exe "D:\Study\DMU MSc\Block4 Applied AI&Research Me
   --save-image "D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\runs\shezhenv3_coco\predict_result.jpg"
 ```
 
+也可以通过运行API形势进行测试：
+```text
+启动API：
+cd dataset-d-study-dmu-msc-block4\coco
+python -m uvicorn tongue_disease_api:app --host 127.0.0.1 --port 8000
+
+http://127.0.0.1:8000/docs
+```
+
 ## 输出内容
 
 分析脚本会输出：
@@ -83,3 +92,8 @@ E:\Software\python310\python.exe "D:\Study\DMU MSc\Block4 Applied AI&Research Me
 ```text
 D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\runs\shezhenv3_coco\predict_result.json
 ```
+## 函数包装
+
+输入：图片的bytes值
+输出：返回识别结果的json文件，文件名：predict_result.json，路径：\tongue-analysis根目录下
+
