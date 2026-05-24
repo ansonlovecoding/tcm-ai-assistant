@@ -46,12 +46,11 @@ export const api = {
     })
   },
 
-  submitPulse: (sessionId, { durationMs = 30000, sampleRateHz = 200 } = {}) =>
+  submitPulse: (sessionId, { waveform=[] } = {}) =>
     request(`/sessions/${sessionId}/pulse`, {
       method: 'POST',
       body: JSON.stringify({
-        duration_ms: durationMs,
-        sample_rate_hz: sampleRateHz
+        waveform: waveform
       })
     }),
 
