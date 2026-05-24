@@ -1,6 +1,6 @@
 # Tongue Coating Health Analysis
 
-这套代码用于把 `shezhenv3-xml` 舌苔数据集训练成一个目标检测模型，并用检测到的舌象特征生成健康状态分析提示。
+这套代码用于把 `shezhenv3-coco` 舌苔数据集训练成一个目标检测模型，并用检测到的舌象特征生成健康状态分析提示。
 
 重要说明：模型输出只能作为学习、研究和健康风险提示，不能替代医生诊断。
 
@@ -15,56 +15,60 @@ pip install -r requirements.txt
 原始数据路径：
 
 ```text
-D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\Tongue coating\shezhen datasets\shezhenv3-xml\shezhenv3-xml
+D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\Tongue coating\shezhen datasets\shezhenv3-coco\shezhenv3-coco
 ```
 
-转换为 YOLO 格式：
-
-```powershell
-python scripts\prepare_yolo_dataset.py --source "D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\Tongue coating\shezhen datasets\shezhenv3-xml\shezhenv3-xml" --output data\shezhen_yolo
+下载链接：
+```text
+https://datadryad.org/dataset/doi:10.5061/dryad.1c59zw48r
 ```
 
-只检查数据集、不生成训练文件：
+YOLO数据集yaml文件：
 
-```powershell
-python scripts\prepare_yolo_dataset.py --source "D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\Tongue coating\shezhen datasets\shezhenv3-xml\shezhenv3-xml" --output data\shezhen_yolo --dry-run
+```text
+D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\coco\shezhenv3_coco_dataset.yaml
 ```
 
-转换后会生成：
+舌纹病症配置文件：
 
-- `data\shezhen_yolo\dataset.yaml`
-- `data\shezhen_yolo\labels\...`
-- `data\shezhen_yolo\images\...`
-- `data\shezhen_yolo\label_mapping.json`
+```text
+D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\coco\tongue_label_profiles.json
+```
 
 ## 3. 训练模型
 
 ```powershell
-python train_yolo.py --data data\shezhen_yolo\dataset.yaml --epochs 80 --imgsz 640 --model yolo11n.pt
+D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis
+$env:YOLO_CONFIG_DIR="D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\ultralytics_config"
+
+E:\Software\python310\python.exe train_yolo.py `
+  --data "D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\coco\shezhenv3_coco_dataset.yaml" `
+  --epochs 80 `
+  --imgsz 640 `
+  --batch 4 `
+  --model yolo11n.pt `
+  --device 0 `
+  --project runs\shezhenv3_coco `
+  --name train
+  
+  检查是否使用GPU：
+  nvidia-smi
 ```
 
 训练完成后，权重通常在：
 
 ```text
-runs\tongue_coating\train\weights\best.pt
+runs\runs\train-2\weights\best.pt
 ```
 
 ## 4. 舌苔健康分析
 
 ```powershell
-python analyze_tongue_health.py --model runs\tongue_coating\train\weights\best.pt --image "D:\path\to\tongue.jpg" --mapping data\shezhen_yolo\label_mapping.json
-```
-
-如果你知道数字类别对应的真实舌象含义，可以复制并编辑：
-
-```text
-config\label_semantics.example.json
-```
-
-然后运行：
-
-```powershell
-python analyze_tongue_health.py --model runs\tongue_coating\train\weights\best.pt --image "D:\path\to\tongue.jpg" --mapping data\shezhen_yolo\label_mapping.json --semantics config\label_semantics.example.json
+E:\Software\python310\python.exe "D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\coco\predict_tongue_disease.py" `
+  --model "D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\runs\train-2\weights\best.pt" `
+  --image "D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\TESTDATA\TESTDATA3.jpg" `
+  --save-json "D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\runs\shezhenv3_coco\predict_result.json" `
+  --save-image "D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\runs\shezhenv3_coco\predict_result.jpg"
 ```
 
 ## 输出内容
@@ -75,5 +79,7 @@ python analyze_tongue_health.py --model runs\tongue_coating\train\weights\best.p
 - 舌苔/异常区域占比
 - 基于规则的健康风险提示
 - 是否需要进一步人工检查
-
-由于当前数据集 XML 中类别是数字标签，代码默认不会假装知道每个数字的医学含义。你可以在 `config\label_semantics.example.json` 中补充类别含义和风险规则，这样输出会更接近真实“舌苔分析健康状况”的应用。
+- 输出分析内容位置在
+```text
+D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\runs\shezhenv3_coco\predict_result.json
+```

@@ -1,7 +1,7 @@
 {
-  "image": "D:\\Study\\DMU MSc\\Block4 Applied AI&Research Method\\Applied AI\\mini project\\Tongue_diagnosis\\TESTDATA\\TESTDATA3.jpg",
-  "model": "D:\\Study\\DMU MSc\\Block4 Applied AI&Research Method\\Applied AI\\mini project\\Tongue_diagnosis\\runs\\train-2\\weights\\best.pt",
-  "label_config": "D:\\Study\\DMU MSc\\Block4 Applied AI&Research Method\\Applied AI\\mini project\\Tongue_diagnosis\\coco\\tongue_label_profiles.json",
+  "image": "D:\\Study\\DMU MSc\\Block4 Applied AI&Research Method\\Applied AI\\mini project\\tcm-ai-assistant\\tongue-analysis\\TESTDATA\\TESTDATA3.jpg",
+  "model": "D:\\Study\\DMU MSc\\Block4 Applied AI&Research Method\\Applied AI\\mini project\\tcm-ai-assistant\\tongue-analysis\\runs\\train-2\\weights\\best.pt",
+  "label_config": "D:\\Study\\DMU MSc\\Block4 Applied AI&Research Method\\Applied AI\\mini project\\tcm-ai-assistant\\tongue-analysis\\coco\\tongue_label_profiles.json",
   "confidence_threshold": 0.25,
   "medical_disclaimer": "本结果只适合作为学习、科研和健康风险提示，不能替代医生诊断。This result is only suitable as a reference for learning, research, and health risks, and cannot replace a doctor's diagnosis.",
   "risk_level": "mild_attention",
