@@ -1,8 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PulseSerialDevice } from '@device/pulse-serial-device.js'
+import { MockPulseDevice } from '@device/mock-pulse-device.js'
 
 const TARGET_SAMPLES = 256
+
+// Flip to 'serial' when a real Arduino is wired up. With 'mock', the
+// connect/start buttons drive a simulated PPG generator at ~100 Hz so the
+// whole UI flow can be exercised on any browser without hardware.
+const DEVICE_MODE = 'mock' // 'serial' | 'mock'
+const DeviceClass = DEVICE_MODE === 'serial' ? PulseSerialDevice : MockPulseDevice
 
 // Filter all UI-side device logs in DevTools by searching for "[pulse]".
 const log = (...args) => console.log('[pulse]', ...args)
@@ -13,11 +20,14 @@ export default function PulseWave({ captured, waveform, onCapturedChange }) {
   const { t } = useTranslation()
 
   const [status, setStatus] = useState(() => {
-    if (!PulseSerialDevice.isSupported) return 'unsupported'
+    if (!DeviceClass.isSupported) return 'unsupported'
     return captured ? 'done' : 'disconnected'
   })
   const [progress, setProgress] = useState(captured ? TARGET_SAMPLES : 0)
   const [errorMsg, setErrorMsg] = useState(null)
+  const [displaySamples, setDisplaySamples] = useState(
+    Array.isArray(waveform) && waveform.length ? waveform : null
+  )
 
   const deviceRef = useRef(null)
   const samplesRef = useRef([])
@@ -25,7 +35,7 @@ export default function PulseWave({ captured, waveform, onCapturedChange }) {
   // Cleanup: make sure we don't leave the port open if the component unmounts
   // mid-capture (e.g. step navigation).
   useEffect(() => {
-    log('mounted, isSupported =', PulseSerialDevice.isSupported)
+    log('mounted, DEVICE_MODE =', DEVICE_MODE, 'isSupported =', DeviceClass.isSupported)
     return () => {
       log('unmount — disconnecting if needed')
       deviceRef.current?.disconnect().catch(() => {})
@@ -36,7 +46,7 @@ export default function PulseWave({ captured, waveform, onCapturedChange }) {
   const guidance = t('pulse.guidance', { returnObjects: true })
 
   const ensureDevice = () => {
-    if (!deviceRef.current) deviceRef.current = new PulseSerialDevice()
+    if (!deviceRef.current) deviceRef.current = new DeviceClass()
     return deviceRef.current
   }
 
@@ -66,6 +76,7 @@ export default function PulseWave({ captured, waveform, onCapturedChange }) {
     deviceRef.current = null
     samplesRef.current = []
     setProgress(0)
+    setDisplaySamples(null)
     setStatus('disconnected')
     onCapturedChange(false, null)
   }
@@ -75,6 +86,7 @@ export default function PulseWave({ captured, waveform, onCapturedChange }) {
     setErrorMsg(null)
     samplesRef.current = []
     setProgress(0)
+    setDisplaySamples(null)
     setStatus('capturing')
 
     try {
@@ -86,9 +98,11 @@ export default function PulseWave({ captured, waveform, onCapturedChange }) {
           // Throttle re-renders: only paint every 8 samples and on completion.
           if (buf.length === TARGET_SAMPLES) {
             setProgress(TARGET_SAMPLES)
+            setDisplaySamples(buf.slice())
             finishCapture(buf.slice())
           } else if (buf.length % 8 === 0) {
             setProgress(buf.length)
+            setDisplaySamples(buf.slice())
           }
         },
         onError: (e) => {
@@ -122,6 +136,7 @@ export default function PulseWave({ captured, waveform, onCapturedChange }) {
     await deviceRef.current?.stopCapture().catch(() => {})
     samplesRef.current = []
     setProgress(0)
+    setDisplaySamples(null)
     setStatus('connected')
   }
 
@@ -129,6 +144,7 @@ export default function PulseWave({ captured, waveform, onCapturedChange }) {
     log('restart() clicked')
     samplesRef.current = []
     setProgress(0)
+    setDisplaySamples(null)
     setStatus('connected')
     onCapturedChange(false, null)
   }
@@ -159,7 +175,11 @@ export default function PulseWave({ captured, waveform, onCapturedChange }) {
           </span>
         </div>
 
-        <Waveform animated={status === 'capturing'} filled={status === 'done'} />
+        <Waveform
+          filled={status === 'done'}
+          samples={displaySamples}
+          targetSamples={TARGET_SAMPLES}
+        />
         <p className="waveform-caption">
           {showProgress
             ? t('pulse.capture_progress', { current: progress, total: TARGET_SAMPLES })
@@ -218,13 +238,51 @@ export default function PulseWave({ captured, waveform, onCapturedChange }) {
   )
 }
 
-function Waveform({ animated, filled }) {
-  const path =
-    'M0 60 L40 60 L60 30 L72 70 L88 22 L100 78 L120 50 L150 58 L170 60 L210 60 L230 28 L242 72 L258 22 L270 78 L290 52 L320 58 L340 60 L380 60 L400 30 L412 70 L428 22 L440 78 L460 50 L490 58 L510 60 L560 60'
+const VIEW_W = 560
+const VIEW_H = 100
+const PAD_Y = 8
+
+function buildWaveformPath(samples, targetSamples) {
+  if (!samples || samples.length < 2) return null
+
+  // Auto-scale Y to the visible samples so even small swings fill the card.
+  let min = Infinity
+  let max = -Infinity
+  for (const v of samples) {
+    if (v < min) min = v
+    if (v > max) max = v
+  }
+  const range = max - min || 1
+
+  // Map index → x across the *target* width so the trace grows left-to-right
+  // as samples arrive (rather than rescaling on every new point).
+  const denom = Math.max((targetSamples || samples.length) - 1, 1)
+  const usableH = VIEW_H - 2 * PAD_Y
+
+  let d = ''
+  for (let i = 0; i < samples.length; i++) {
+    const x = (i / denom) * VIEW_W
+    const y = PAD_Y + usableH - ((samples[i] - min) / range) * usableH
+    d += (i === 0 ? 'M' : ' L') + x.toFixed(1) + ' ' + y.toFixed(1)
+  }
+  return d
+}
+
+function Waveform({ filled, samples, targetSamples }) {
+  const dataPath = buildWaveformPath(samples, targetSamples)
+
+  // When real samples are present we always disable the CSS "drawing"
+  // animation (stroke-dasharray) so the line updates on each sample tick
+  // instead of being progressively revealed. When samples are *not* yet
+  // present we hide the path entirely — just show the grid — so the user
+  // doesn't see a fake animated trace before real data arrives.
+  const pathStyle = dataPath
+    ? { strokeDasharray: 'none', strokeDashoffset: 0, transition: 'none' }
+    : undefined
 
   return (
-    <div className={`waveform ${animated ? 'is-animated' : ''} ${filled ? 'is-filled' : ''}`}>
-      <svg viewBox="0 0 560 100" preserveAspectRatio="none">
+    <div className={`waveform ${filled ? 'is-filled' : ''}`}>
+      <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} preserveAspectRatio="none">
         <defs>
           <linearGradient id="pulseGrad" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="#8B1A1A" stopOpacity="0.2" />
@@ -234,10 +292,19 @@ function Waveform({ animated, filled }) {
         </defs>
         <g className="waveform-grid">
           {[20, 40, 60, 80].map((y) => (
-            <line key={y} x1="0" y1={y} x2="560" y2={y} />
+            <line key={y} x1="0" y1={y} x2={VIEW_W} y2={y} />
           ))}
         </g>
-        <path className="waveform-path" d={path} fill="none" stroke="url(#pulseGrad)" strokeWidth="2" />
+        {dataPath && (
+          <path
+            className="waveform-path"
+            d={dataPath}
+            fill="none"
+            stroke="url(#pulseGrad)"
+            strokeWidth="2"
+            style={pathStyle}
+          />
+        )}
       </svg>
     </div>
   )
