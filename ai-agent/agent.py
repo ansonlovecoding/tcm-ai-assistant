@@ -80,17 +80,15 @@ def _build_prompt(patient: dict, tongue_ml: Optional[dict], pulse_analysis: Opti
         lines.append("\n【舌象分析】\n暂无舌象数据。")
 
     if pulse_analysis:
-        pt  = pulse_analysis.get("pulse_type", {})
         sbp = pulse_analysis.get("sbp")
         dbp = pulse_analysis.get("dbp")
-        bp_str = f" | 血压：{sbp}/{dbp} mmHg" if sbp is not None and dbp is not None else ""
-        lines.append(
-            f"\n【脉象分析】\n"
-            f"脉型：{pt.get('zh', '')} | 心率：{pulse_analysis.get('rate_bpm', '')}次/分{bp_str}\n"
-            f"节律：{pulse_analysis.get('rhythm', {}).get('zh', '')} | "
-            f"力度：{pulse_analysis.get('strength', {}).get('zh', '')}\n"
-            f"备注：{pulse_analysis.get('notes', {}).get('zh', '')}"
-        )
+        if sbp is not None and dbp is not None:
+            lines.append(
+                f"\n【脉象分析】（来源：血压预测模型）\n"
+                f"收缩压（SBP）：{sbp} mmHg | 舒张压（DBP）：{dbp} mmHg"
+            )
+        else:
+            lines.append("\n【脉象分析】\n暂无血压数据。")
     else:
         lines.append("\n【脉象分析】\n暂无脉象数据。")
 
