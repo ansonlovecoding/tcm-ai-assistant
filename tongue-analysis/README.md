@@ -26,23 +26,26 @@ https://datadryad.org/dataset/doi:10.5061/dryad.1c59zw48r
 YOLO数据集yaml文件：
 
 ```text
-D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\coco\shezhenv3_coco_dataset.yaml
+tcm-ai-assistant\tongue-analysis\coco\shezhenv3_coco_dataset.yaml
+```
+数据集位置：
+```text
+tcm-ai-assistant\tongue-analysis\datasets\shezhenv3-coco
 ```
 
 舌纹病症配置文件：
 
 ```text
-D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\coco\tongue_label_profiles.json
+tcm-ai-assistant\tongue-analysis\coco\tongue_label_profiles.json
 ```
 
 ## 3. 训练模型
 
 ```powershell
-D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis
-$env:YOLO_CONFIG_DIR="D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\ultralytics_config"
+cd tcm-ai-assistant\tongue-analysis
 
-E:\Software\python310\python.exe train_yolo.py `
-  --data "D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\coco\shezhenv3_coco_dataset.yaml" `
+python .\train_yolo.py `
+  --data .\coco\shezhenv3_coco_dataset.yaml `
   --epochs 80 `
   --imgsz 640 `
   --batch 4 `
@@ -58,17 +61,17 @@ E:\Software\python310\python.exe train_yolo.py `
 训练完成后，权重通常在：
 
 ```text
-runs\runs\train-2\weights\best.pt
+runs\train-2\weights\best.pt
 ```
 
 ## 4. 舌苔健康分析
 
 ```powershell
-E:\Software\python310\python.exe "D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\coco\predict_tongue_disease.py" `
-  --model "D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\runs\train-2\weights\best.pt" `
-  --image "D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\TESTDATA\TESTDATA3.jpg" `
-  --save-json "D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\runs\shezhenv3_coco\predict_result.json" `
-  --save-image "D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\runs\shezhenv3_coco\predict_result.jpg"
+python .\coco\predict_tongue_disease.py `
+  --model .\runs\train-2\weights\best.pt `
+  --image .\TESTDATA\TESTDATA3.jpg `
+  --save-json .\runs\shezhenv3_coco\predict_result.json `
+  --save-image .\runs\shezhenv3_coco\predict_result.jpg
 ```
 
 也可以通过运行API形势进行测试：
@@ -90,7 +93,7 @@ http://127.0.0.1:8000/docs
 - 是否需要进一步人工检查
 - 输出分析内容位置在
 ```text
-D:\Study\DMU MSc\Block4 Applied AI&Research Method\Applied AI\mini project\tcm-ai-assistant\tongue-analysis\runs\shezhenv3_coco\predict_result.json
+tcm-ai-assistant\tongue-analysis\runs\shezhenv3_coco\predict_result.json
 ```
 ## 函数包装
 函数：predict_result_from_bytes.py, 路径：tongue-analysis根目录下

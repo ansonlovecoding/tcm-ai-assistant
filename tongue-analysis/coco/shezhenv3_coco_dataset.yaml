@@ -1,4 +1,4 @@
-path: "D:/Study/DMU MSc/Block4 Applied AI&Research Method/Applied AI/mini project/Tongue coating/shezhen datasets/shezhenv3-coco/shezhenv3-coco"
+path: "datasets/shezhenv3-coco"
 train: train/images
 val: val/images
 test: test/images
