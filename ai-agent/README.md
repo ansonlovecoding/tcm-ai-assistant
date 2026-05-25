@@ -71,23 +71,26 @@ return DiagnosisResult(**result)
 
 ## pulse_analysis 格式
 
-脉象分析对象由 `POST /api/sessions/{id}/pulse` 返回。其中 `sbp`/`dbp` 字段由
-`BloodPressurePredictor` 模型推断，若模型不可用则为 `null`。
+脉搏模型目前输出血压预测结果，传入以下格式即可：
 
 ```json
 {
-  "pulse_type": { "zh": "滑数脉", "en": "Slippery and rapid pulse" },
-  "rate_bpm": 88,
-  "rhythm":   { "zh": "节律规整", "en": "Regular rhythm" },
-  "strength": { "zh": "有力",     "en": "Strong" },
-  "notes":    { "zh": "多见于痰热内蕴", "en": "Phlegm-heat pattern" },
   "sbp": 128,
   "dbp": 82
 }
 ```
 
-`sbp`/`dbp` 若有值，会在发送给 DeepSeek 的 prompt 中以 `血压：sbp/dbp mmHg` 形式补充，
-让模型在辨证时考虑血压因素。
+| 字段  | 含义                        | 单位  |
+|-------|-----------------------------|-------|
+| `sbp` | 收缩压（Systolic BP，高压） | mmHg  |
+| `dbp` | 舒张压（Diastolic BP，低压）| mmHg  |
+
+agent 会在 prompt 中以如下形式传给 DeepSeek，让模型结合血压进行辨证：
+
+```
+【脉象分析】（来源：血压预测模型）
+收缩压（SBP）：128 mmHg | 舒张压（DBP）：82 mmHg
+```
 
 ## tongue_ml 格式
 
