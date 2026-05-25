@@ -28,6 +28,9 @@ from .store import store
 from pulse.mock_ppg import MockPpg
 from pulse.predict import BloodPressurePredictor
 
+# Number of consecutive PPG samples the CNN1D model expects (see pulse/train.py).
+PULSE_WINDOW_SIZE = 256
+
 API_DESCRIPTION = """
 Mock backend powering the **Qi-Huang AI / 岐黄智诊** single-page web app.
 
@@ -187,10 +190,18 @@ def submit_pulse(session_id: str, sample: PulseSample) -> PulseResult:
     except KeyError:
         raise HTTPException(status_code=404, detail="session not found")
 
-    # TODO: change to real data after integrate the device
-    # waveform = sample.waveform
-    waveform = MockPpg().ppg
+    # Real PPG window from the web (via the serial-connected pulse sensor),
+    # or fall back to the simulated waveform when the device is unavailable
+    # (e.g. browser without Web Serial, dev machine without the sensor).
+    if sample.waveform and len(sample.waveform) >= PULSE_WINDOW_SIZE:
+        waveform = sample.waveform[:PULSE_WINDOW_SIZE]
+        waveform_source = "device"
+    else:
+        waveform = MockPpg().ppg
+        waveform_source = "mock"
+
     capture_id = uuid4().hex[:10]
+    print(f"[submit_pulse] {session_id=} {capture_id=} samples={len(waveform)} source={waveform_source}")
 
     predictor = BloodPressurePredictor()
     sbp, dbp = predictor.predict(waveform)
