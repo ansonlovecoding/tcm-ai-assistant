@@ -5,5 +5,5 @@ pulse/dataset
 pulse/preprocess/plot.png
 api/app/__pycache__
 pulse/__pycache__
-tongue-analysis/datasets
-tongue-analysis/runs
+tongue/datasets
+tongue/runs
