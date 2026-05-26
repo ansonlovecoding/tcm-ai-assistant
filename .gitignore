@@ -1,6 +1,7 @@
 .venv
 .idea
 .claude
+.env
 pulse/dataset
 pulse/preprocess/plot.png
 api/app/__pycache__
