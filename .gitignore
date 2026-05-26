@@ -8,3 +8,4 @@ api/app/__pycache__
 pulse/__pycache__
 tongue/datasets
 tongue/runs
+ai_agent/__pycache__
