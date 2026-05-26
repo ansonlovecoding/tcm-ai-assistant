@@ -55,7 +55,12 @@ export const api = {
     }),
 
   diagnose: (sessionId) =>
-    request(`/sessions/${sessionId}/diagnose`, { method: 'POST' })
+    request(`/sessions/${sessionId}/diagnose`, { method: 'POST' }),
+
+  // Proxy through the backend so the Pexels API key never reaches the SPA.
+  // Returns the photo URL on success; throws on 404 (no match) or 5xx.
+  foodImage: (query) =>
+    request(`/foods/image?q=${encodeURIComponent(query)}`)
 }
 
 // Helper for fields that the API returns as { zh, en }.
