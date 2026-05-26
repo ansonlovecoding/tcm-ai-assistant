@@ -13,36 +13,157 @@ from .models import (
     PatientInfo,
     PulseAnalysis,
     TongueAnalysis,
+    TongueDetectedLabel,
+    TongueDetection,
+    TongueHealthRisk,
 )
 
 
+# Shorthand bilingual labels reused across mock variants — keeps each
+# TongueAnalysis literal readable.
+_LBL_BAITAI = BilingualText(zh="白苔舌", en="White coating tongue")
+_LBL_LIEWEN = BilingualText(zh="裂纹舌", en="Cracked tongue")
+_LBL_CHIHEN = BilingualText(zh="齿痕舌", en="Dentate tongue")
+_LBL_HONGSHE = BilingualText(zh="红舌", en="Red tongue")
+_LBL_HUANGTAI = BilingualText(zh="黄苔舌", en="Yellow coating tongue")
+_LBL_PANGDA = BilingualText(zh="胖大舌", en="Enlarged tongue")
+
+_RISK_FLUIDS = BilingualText(zh="津液不足风险", en="Risk of Insufficient Body Fluids")
+_RISK_YIN = BilingualText(zh="阴虚风险", en="Risk of Yin Deficiency")
+_RISK_DAMP_SPLEEN = BilingualText(zh="脾虚湿重风险", en="Risk of Spleen Deficiency and Excessive Dampness")
+_RISK_COLD_DAMP = BilingualText(zh="寒湿风险", en="Risk of Cold-Dampness")
+_RISK_WEAK_SPLEEN = BilingualText(zh="脾胃功能偏弱风险", en="Risk of Weak Spleen Function")
+_RISK_HEAT = BilingualText(zh="内热风险", en="Risk of Internal Heat")
+_RISK_PHLEGM = BilingualText(zh="痰湿风险", en="Risk of Phlegm-Dampness")
+
+
 TONGUE_VARIANTS: list[TongueAnalysis] = [
+    # Variant 1 — mirrors the example JSON the model emits (4 detections).
     TongueAnalysis(
-        body_color=BilingualText(zh="淡红舌", en="Pale red body"),
-        coating=BilingualText(zh="薄白苔", en="Thin white coating"),
-        shape=BilingualText(zh="舌体适中，边缘略齿痕", en="Moderate size, slight teeth marks on edges"),
-        notes=BilingualText(
-            zh="提示气虚倾向，脾胃功能略弱。",
-            en="Suggests mild Qi deficiency and a slightly weak spleen-stomach.",
-        ),
+        detected_labels=[
+            TongueDetectedLabel(name=_LBL_BAITAI, count=1),
+            TongueDetectedLabel(name=_LBL_LIEWEN, count=1),
+            TongueDetectedLabel(name=_LBL_CHIHEN, count=2),
+        ],
+        possible_disease_or_health_risks=[
+            TongueHealthRisk(risk=_RISK_FLUIDS,      score=1.135),
+            TongueHealthRisk(risk=_RISK_YIN,         score=1.135),
+            TongueHealthRisk(risk=_RISK_DAMP_SPLEEN, score=1.124),
+            TongueHealthRisk(risk=_RISK_COLD_DAMP,   score=0.864),
+            TongueHealthRisk(risk=_RISK_WEAK_SPLEEN, score=0.864),
+        ],
+        detections=[
+            TongueDetection(
+                class_id=9, label="baitaishe", name=_LBL_BAITAI, confidence=0.8637,
+                meaning=BilingualText(
+                    zh="舌苔偏白，常作为寒湿、脾胃功能偏弱或早期外感的观察信号。",
+                    en="A white coating on the tongue is often seen as a sign of cold-dampness, weak spleen function, or early external contraction.",
+                ),
+                possible_risks=[_RISK_COLD_DAMP, _RISK_WEAK_SPLEEN],
+            ),
+            TongueDetection(
+                class_id=7, label="liewenshe", name=_LBL_LIEWEN, confidence=0.5676,
+                meaning=BilingualText(
+                    zh="舌面裂纹明显，常作为津液不足、阴虚或长期消化吸收状态异常的观察信号。",
+                    en="A cracked tongue is often seen as a sign of insufficient body fluids, yin deficiency, or abnormal digestive function.",
+                ),
+                possible_risks=[_RISK_FLUIDS, _RISK_YIN],
+            ),
+            TongueDetection(
+                class_id=8, label="chihenshe", name=_LBL_CHIHEN, confidence=0.2964,
+                meaning=BilingualText(
+                    zh="舌边齿痕明显，常作为脾虚、湿重或水液代谢偏弱的观察信号。",
+                    en="A dentate tongue is often seen as a sign of spleen deficiency, excessive dampness, or weak water metabolism.",
+                ),
+                possible_risks=[_RISK_DAMP_SPLEEN],
+            ),
+            TongueDetection(
+                class_id=8, label="chihenshe", name=_LBL_CHIHEN, confidence=0.2654,
+                meaning=BilingualText(
+                    zh="舌边齿痕明显，常作为脾虚、湿重或水液代谢偏弱的观察信号。",
+                    en="A dentate tongue is often seen as a sign of spleen deficiency, excessive dampness, or weak water metabolism.",
+                ),
+                possible_risks=[_RISK_DAMP_SPLEEN],
+            ),
+        ],
     ),
+    # Variant 2 — Yin-deficiency-with-heat presentation.
     TongueAnalysis(
-        body_color=BilingualText(zh="红舌", en="Red body"),
-        coating=BilingualText(zh="黄薄苔", en="Thin yellow coating"),
-        shape=BilingualText(zh="舌体偏瘦，舌尖红点", en="Slightly thin body, red spots on tip"),
-        notes=BilingualText(
-            zh="提示阴虚内热，情志或睡眠欠佳。",
-            en="Suggests Yin deficiency with internal heat, possibly poor sleep or emotional strain.",
-        ),
+        detected_labels=[
+            TongueDetectedLabel(name=_LBL_HONGSHE,   count=1),
+            TongueDetectedLabel(name=_LBL_HUANGTAI,  count=1),
+            TongueDetectedLabel(name=_LBL_LIEWEN,    count=1),
+        ],
+        possible_disease_or_health_risks=[
+            TongueHealthRisk(risk=_RISK_HEAT,   score=1.420),
+            TongueHealthRisk(risk=_RISK_YIN,    score=1.180),
+            TongueHealthRisk(risk=_RISK_FLUIDS, score=0.910),
+        ],
+        detections=[
+            TongueDetection(
+                class_id=2, label="hongshe", name=_LBL_HONGSHE, confidence=0.7924,
+                meaning=BilingualText(
+                    zh="舌质偏红，常作为内热或阴虚的观察信号。",
+                    en="A red tongue body is often seen as a sign of internal heat or yin deficiency.",
+                ),
+                possible_risks=[_RISK_HEAT, _RISK_YIN],
+            ),
+            TongueDetection(
+                class_id=10, label="huangtaishe", name=_LBL_HUANGTAI, confidence=0.6311,
+                meaning=BilingualText(
+                    zh="舌苔偏黄，常作为湿热或里热的观察信号。",
+                    en="A yellow coating is often seen as a sign of damp-heat or interior heat.",
+                ),
+                possible_risks=[_RISK_HEAT],
+            ),
+            TongueDetection(
+                class_id=7, label="liewenshe", name=_LBL_LIEWEN, confidence=0.4452,
+                meaning=BilingualText(
+                    zh="舌面裂纹明显，常作为津液不足、阴虚或长期消化吸收状态异常的观察信号。",
+                    en="A cracked tongue is often seen as a sign of insufficient body fluids, yin deficiency, or abnormal digestive function.",
+                ),
+                possible_risks=[_RISK_FLUIDS, _RISK_YIN],
+            ),
+        ],
     ),
+    # Variant 3 — Yang-deficiency with damp-phlegm presentation.
     TongueAnalysis(
-        body_color=BilingualText(zh="淡白舌", en="Pale body"),
-        coating=BilingualText(zh="白腻苔", en="White greasy coating"),
-        shape=BilingualText(zh="舌体胖大", en="Enlarged body"),
-        notes=BilingualText(
-            zh="提示阳虚痰湿，代谢偏弱。",
-            en="Suggests Yang deficiency with damp-phlegm and sluggish metabolism.",
-        ),
+        detected_labels=[
+            TongueDetectedLabel(name=_LBL_PANGDA, count=1),
+            TongueDetectedLabel(name=_LBL_BAITAI, count=1),
+            TongueDetectedLabel(name=_LBL_CHIHEN, count=2),
+        ],
+        possible_disease_or_health_risks=[
+            TongueHealthRisk(risk=_RISK_PHLEGM,      score=1.310),
+            TongueHealthRisk(risk=_RISK_DAMP_SPLEEN, score=1.245),
+            TongueHealthRisk(risk=_RISK_COLD_DAMP,   score=0.880),
+        ],
+        detections=[
+            TongueDetection(
+                class_id=5, label="pangdashe", name=_LBL_PANGDA, confidence=0.7102,
+                meaning=BilingualText(
+                    zh="舌体胖大，常作为阳虚、水湿内停或痰湿体质的观察信号。",
+                    en="An enlarged tongue is often seen as a sign of yang deficiency, internal water retention, or a phlegm-damp constitution.",
+                ),
+                possible_risks=[_RISK_PHLEGM, _RISK_DAMP_SPLEEN],
+            ),
+            TongueDetection(
+                class_id=9, label="baitaishe", name=_LBL_BAITAI, confidence=0.6203,
+                meaning=BilingualText(
+                    zh="舌苔偏白，常作为寒湿、脾胃功能偏弱或早期外感的观察信号。",
+                    en="A white coating on the tongue is often seen as a sign of cold-dampness, weak spleen function, or early external contraction.",
+                ),
+                possible_risks=[_RISK_COLD_DAMP],
+            ),
+            TongueDetection(
+                class_id=8, label="chihenshe", name=_LBL_CHIHEN, confidence=0.3318,
+                meaning=BilingualText(
+                    zh="舌边齿痕明显，常作为脾虚、湿重或水液代谢偏弱的观察信号。",
+                    en="A dentate tongue is often seen as a sign of spleen deficiency, excessive dampness, or weak water metabolism.",
+                ),
+                possible_risks=[_RISK_DAMP_SPLEEN],
+            ),
+        ],
     ),
 ]
 
@@ -129,9 +250,15 @@ def mock_diagnosis(
     tongue: Optional[TongueAnalysis],
     pulse: Optional[PulseAnalysis],
 ) -> tuple[BilingualText, BilingualText, DiagnosisAdvice]:
+    # Seed off the top detected label's English name when available — that's
+    # the strongest single-token summary of the tongue analysis.
+    top_label = (
+        tongue.detected_labels[0].name.en
+        if tongue and tongue.detected_labels
+        else None
+    )
     seed = (
-        f"dx:{session_id}:{patient.age}:{patient.gender}:"
-        f"{tongue and tongue.body_color.en}"
+        f"dx:{session_id}:{patient.age}:{patient.gender}:{top_label}"
     )
     return _pick(seed, PATTERN_LIBRARY)
 

@@ -25,8 +25,10 @@ from .models import (
     TongueResult, PulseAnalysis,
 )
 from .store import store
+from .tongue_predictor import tongue_analysis_from_json
 from pulse.mock_ppg import MockPpg
 from pulse.predict import BloodPressurePredictor
+from tongue.predict_result_from_bytes import generate_predict_result_json_from_bytes
 
 # Number of consecutive PPG samples the CNN1D model expects (see pulse/train.py).
 PULSE_WINDOW_SIZE = 256
@@ -161,7 +163,32 @@ async def upload_tongue(session_id: str, image: UploadFile = File(...)) -> Tongu
 
     data = await image.read()
     image_id = uuid4().hex[:10]
-    analysis = mock_data.mock_tongue_analysis(session_id, data)
+
+    # Run the real YOLO tongue predictor and parse its JSON into our typed
+    # TongueAnalysis. If anything goes wrong (predictor crash, malformed
+    # JSON, weights missing, …) return None
+
+    # analysis_source = "mock"
+    # analysis = mock_data.mock_tongue_analysis(session_id, data)
+
+    analysis = None
+    analysis_source = "model"
+    try:
+        result_str = generate_predict_result_json_from_bytes(data)
+        analysis = tongue_analysis_from_json(result_str)
+    except Exception as exc:
+        print(f"[upload_tongue] tongue predictor failed: {exc}")
+        return TongueResult(
+            session_id=session_id,
+            image_id=image_id,
+            received_bytes=len(data),
+            analysis=analysis,
+        )
+
+    print(
+        f"[upload_tongue] {session_id=} {image_id=} bytes={len(data)} source={analysis_source} "
+        f"detections={len(analysis.detections)} risks={len(analysis.possible_disease_or_health_risks)}"
+    )
 
     session.tongue_image_id = image_id
     session.tongue_image_bytes = len(data)
