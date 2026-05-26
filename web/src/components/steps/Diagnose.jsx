@@ -12,6 +12,15 @@ function formatTongueSummary(analysis, lang) {
     .join(', ')
 }
 
+// `food_recommendations` / `foods_to_avoid` come back as
+// `{zh: [...], en: [...]}` (arrays per language, not single strings).
+// Pick the active locale's array and join into a single readable line.
+function pickFoodList(bi, lang) {
+  if (!bi) return []
+  const list = bi[lang] ?? bi.zh ?? bi.en ?? []
+  return Array.isArray(list) ? list : []
+}
+
 export default function Diagnose({
   sessionId,
   patient,
@@ -122,30 +131,48 @@ export default function Diagnose({
         </div>
       )}
 
-      {phase === 'done' && result && (
-        <div className="result-card">
-          <div className="ornament" aria-hidden="true">❖</div>
-          <h3>{t('diagnose.result_title')}</h3>
+      {phase === 'done' && result && (() => {
+        const recommendFoods = pickFoodList(result.food_recommendations, lang)
+        const avoidFoods = pickFoodList(result.foods_to_avoid, lang)
+        return (
+          <div className="result-card">
+            <div className="ornament" aria-hidden="true">❖</div>
+            <h3>{t('diagnose.result_title')}</h3>
 
-          <div className="result-block">
-            <span className="result-label">{t('diagnose.result_pattern')}</span>
-            <p className="result-value">{pickLang(result.pattern, lang)}</p>
-            <p className="result-value result-summary">{pickLang(result.summary, lang)}</p>
+            <div className="result-block">
+              <span className="result-label">{t('diagnose.result_pattern')}</span>
+              <p className="result-value">{pickLang(result.pattern, lang)}</p>
+              <p className="result-value result-summary">{pickLang(result.summary, lang)}</p>
+            </div>
+
+            <div className="result-block">
+              <span className="result-label">{t('diagnose.result_advice')}</span>
+              <p className="result-value">{pickLang(result.advice.lifestyle, lang)}</p>
+              <p className="result-value">{pickLang(result.advice.diet, lang)}</p>
+              <p className="result-value">{pickLang(result.advice.herbal_tea, lang)}</p>
+            </div>
+
+            {recommendFoods.length > 0 && (
+              <div className="result-block">
+                <span className="result-label">{t('diagnose.result_foods_recommended')}</span>
+                <p className="result-value">{recommendFoods.join(lang === 'zh' ? '、' : ', ')}</p>
+              </div>
+            )}
+
+            {avoidFoods.length > 0 && (
+              <div className="result-block">
+                <span className="result-label">{t('diagnose.result_foods_avoid')}</span>
+                <p className="result-value">{avoidFoods.join(lang === 'zh' ? '、' : ', ')}</p>
+              </div>
+            )}
+
+            <p className="result-disclaimer">{pickLang(result.disclaimer, lang)}</p>
+            <button className="btn btn-ghost" onClick={onRestart}>
+              {t('diagnose.restart')}
+            </button>
           </div>
-
-          <div className="result-block">
-            <span className="result-label">{t('diagnose.result_advice')}</span>
-            <p className="result-value">{pickLang(result.advice.lifestyle, lang)}</p>
-            <p className="result-value">{pickLang(result.advice.diet, lang)}</p>
-            <p className="result-value">{pickLang(result.advice.herbal_tea, lang)}</p>
-          </div>
-
-          <p className="result-disclaimer">{pickLang(result.disclaimer, lang)}</p>
-          <button className="btn btn-ghost" onClick={onRestart}>
-            {t('diagnose.restart')}
-          </button>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

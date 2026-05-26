@@ -190,6 +190,9 @@ class DiagnosisAdvice(BaseModel):
     diet: BilingualText = Field(..., description="饮食建议。")
     herbal_tea: BilingualText = Field(..., description="代茶饮参考。")
 
+class BilingualList(BaseModel):
+    zh: list[str]
+    en: list[str]
 
 class DiagnosisResult(BaseModel):
     session_id: str
@@ -197,8 +200,8 @@ class DiagnosisResult(BaseModel):
     summary: BilingualText
     advice: DiagnosisAdvice
     disclaimer: BilingualText
-    food_recommendations: BilingualText
-    foods_to_avoid: BilingualText
+    food_recommendations: BilingualList
+    foods_to_avoid: BilingualList
     generated_at: datetime
 
     model_config = ConfigDict(
