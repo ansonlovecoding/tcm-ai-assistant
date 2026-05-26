@@ -7,7 +7,7 @@ import tempfile
 BASE_DIR = Path(__file__).resolve().parent
 
 PREDICT_SCRIPT = BASE_DIR / "coco" / "predict_tongue_disease.py"
-MODEL_PATH = BASE_DIR / "runs" / "train-2" / "weights" / "best.pt"
+MODEL_PATH = BASE_DIR / "weights" / "best.pt"
 
 
 def generate_predict_result_json_from_bytes(image_bytes: bytes) -> str:
