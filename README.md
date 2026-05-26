@@ -11,7 +11,7 @@
 
 ### Architecture
 
-### ![ArchitectureDesign](README.assets/ArchitectureDesign.jpg)
+### ![ArchitectureDesign](README.assets/ArchitectureDesign-9803739.jpg)
 
 ### Project structure
 
@@ -19,24 +19,25 @@
 code/
 ├── web/              React + Vite single-page app (Chinese / English bilingual UI)
 ├── api/              FastAPI service exposing the endpoints consumed by the web app
-├── ai-agent/         AI agent that synthesises patient info, tongue and pulse results
-│                     into a TCM pattern differentiation
-├── tongue/  Model training & inference for tongue images
-├── pulse/   Model training & inference for pulse waveforms, predict SBP/DBP 
+├── ai_agent/         AI agent that synthesises patient info, tongue and pulse
+│                     results into a TCM pattern-differentiation report
+├── tongue/           Model training & inference for tongue images (YOLO)
+├── pulse/            Model training & inference for pulse waveforms (CNN1D → SBP/DBP)
 ├── docker-compose.yml
+├── env.example       Template for the project-level `.env` (see "Environment variables")
 ├── .venv/            Local Python 3.10 virtualenv (created by the developer)
 └── README.md
 ```
 
 Module responsibilities:
 
-| Module            | Role                                                                                                                      |
-|-------------------|---------------------------------------------------------------------------------------------------------------------------|
-| `web`             | Four-step UI: patient info → tongue photo → pulse capture → AI diagnosis. Traditional Chinese styling, Chinese & English. |
-| `api`             | FastAPI HTTP layer. Validates input, stores sessions, returns bilingual analyses.                                         |
-| `ai-agent`        | Orchestrates LLM + retrieval to produce the final pattern report (planned).                                               |
-| `tongue` | Vision model for tongue body / coating / shape (planned).                                                                 |
-| `pulse`  | Signal-processing & prediction of SBP/DBP.                                                                                |
+| Module      | Role                                                                                                                      |
+|-------------|---------------------------------------------------------------------------------------------------------------------------|
+| `web`       | Four-step UI: patient info → tongue photo → pulse capture → AI diagnosis. Traditional Chinese styling, Chinese & English. |
+| `api`       | FastAPI HTTP layer. Validates input, stores sessions, returns bilingual analyses.                                         |
+| `ai_agent`  | DeepSeek V3-backed agent. Builds a prompt from patient info + tongue + pulse and returns a structured bilingual diagnosis.|
+| `tongue`    | YOLO model that detects tongue features (coating, shape, cracks…) plus a rule engine for health-risk hints.               |
+| `pulse`     | 1D-CNN that turns a 256-sample PPG window into an `(SBP, DBP)` blood-pressure prediction.                                 |
 
 ### Quick start — Docker
 
@@ -85,6 +86,33 @@ npm run dev
 ```
 
 Open <http://localhost:5173>. Vite's dev server proxies `/api/*` to the FastAPI server on port 8000.
+
+### Environment variables
+
+Several modules need external API keys. Copy the template once and fill the keys in:
+
+```bash
+cp env.example .env
+# then edit .env with the real values
+```
+
+`docker compose` reads `.env` via the api service's `env_file:` directive, and
+the Python modules also fall back to `load_dotenv(<repo>/.env)` so the manual
+(without-Docker) flow works the same way.
+
+| Variable                  | Required by                                       | What it's for                                                                                          |
+|---------------------------|---------------------------------------------------|--------------------------------------------------------------------------------------------------------|
+| `DEEPSEEK_API_KEY`        | `ai_agent/agent.py`                               | DeepSeek V3 (`deepseek-chat`) — the LLM that generates the final TCM pattern. Get one at <https://platform.deepseek.com>. Without it the `/api/sessions/{id}/diagnose` endpoint cannot produce real output. |
+| `PEXELS_API_KEY`          | `api/app/pexels.py` → `GET /api/foods/image`      | Pexels Photo Search — used to fetch real photos for the food chips in the diagnosis result card. Get a free key at <https://www.pexels.com/api/>. If unset, chips fall back to the placeholder SVG and the rest of the app still works. |
+| `TCM_PULSE_ANALYSIS_ROOT` | `api/app/pulse_predictor.py` (optional)           | Overrides the directory where the API looks for the `pulse/` package. Defaults to the repo's sibling `pulse/`; useful inside Docker where it's mounted at `/pulse`. |
+| `TCM_PULSE_MODEL_PATH`    | `api/app/pulse_predictor.py` (optional)           | Overrides the pulse CNN checkpoint path. Defaults to `<TCM_PULSE_ANALYSIS_ROOT>/best_model.pth`.       |
+| `API_TARGET`              | `web/vite.config.js` (dev only)                   | The URL Vite proxies `/api/*` to. Defaults to `http://localhost:8000`. The docker-compose web service sets it to `http://api:8000`. |
+| `DOCKER`                  | `web/vite.config.js` (dev only)                   | Set to a truthy value inside Docker so Vite uses polling for file watching (bind-mount events are unreliable on macOS Docker). |
+
+The two **required** keys for full functionality are `DEEPSEEK_API_KEY` and
+`PEXELS_API_KEY`. The rest have sensible defaults and only need to be set
+when you're moving things around (e.g. pointing the API at an alternate
+pulse checkpoint).
 
 ### API endpoints (summary)
 
@@ -322,6 +350,59 @@ The bilingual-string splitter (`split_zh_en`) is a small heuristic: it locates t
 
 Every user-facing string follows the project's `{zh, en}` convention so the frontend's `pickLang` helper renders the right language without an extra round-trip.
 
+### AI Agent — overview
+
+`ai_agent/` is the LLM-powered layer that turns the patient info, tongue model output and pulse SBP/DBP prediction into a finished TCM pattern-differentiation report. It uses **DeepSeek V3** (`deepseek-chat`) via the OpenAI-compatible API (`AsyncOpenAI`).
+
+| Item                    | Location                                                                                  |
+|-------------------------|-------------------------------------------------------------------------------------------|
+| Public entry point      | `ai_agent/agent.py` → `async generate_diagnosis(session_id, patient, tongue_ml, pulse_analysis)` |
+| System prompt           | `ai_agent/agent.py` (`SYSTEM_PROMPT` constant)                                            |
+| Prompt builder          | `_build_prompt(patient, tongue_ml, pulse_analysis)` — formats the three inputs in Chinese for the LLM |
+| Module docs             | [`ai_agent/README.md`](ai_agent/README.md)                                                |
+| Auth                    | Reads `DEEPSEEK_API_KEY` from the environment / `.env` (see [Environment variables](#environment-variables)) |
+
+The agent returns a dictionary that maps **directly** onto the `DiagnosisResult` pydantic model — every user-facing string is bilingual `{zh, en}`, and the food lists are `{zh: [...], en: [...]}` to feed the result-card chips on the web.
+
+### AI Agent — diagnosis flow
+
+`POST /api/sessions/{id}/diagnose` is wired to `ai_agent.agent.generate_diagnosis`. The flow:
+
+1. The endpoint pulls the stored `PatientInfo`, `TongueAnalysis` (from step 2) and `PulseAnalysis` (from step 3) out of the session store.
+2. `_build_prompt(...)` composes a Chinese-language user message that summarises:
+   - basic patient info (age, gender, height, weight, BMI);
+   - the tongue YOLO output — every detected label and the rule-engine risk list, with bilingual names preserved;
+   - the pulse SBP / DBP, when present.
+3. `generate_diagnosis` calls DeepSeek with `temperature=…` and `response_format={"type": "json_object"}`, instructing the model (via `SYSTEM_PROMPT`) to emit the exact `DiagnosisResult` JSON shape, no markdown, no extra fields.
+4. The endpoint returns the structured response straight to the SPA, which renders the pattern, summary, advice (lifestyle / diet / herbal tea), recommended foods, foods to avoid, and disclaimer on the diagnosis result card.
+
+**Example response shape** (matches `DiagnosisResult` in `api/app/models.py`):
+
+```json
+{
+  "session_id": "abc123",
+  "pattern":  {"zh": "湿热内蕴证", "en": "Damp-Heat Accumulation Pattern"},
+  "summary":  {"zh": "...", "en": "..."},
+  "advice": {
+    "lifestyle":  {"zh": "...", "en": "..."},
+    "diet":       {"zh": "...", "en": "..."},
+    "herbal_tea": {"zh": "...", "en": "..."}
+  },
+  "food_recommendations": {
+    "zh": ["冬瓜", "绿豆", "苦瓜", "莲藕", "茯苓"],
+    "en": ["Winter melon", "Mung beans", "Bitter melon", "Lotus root", "Poria"]
+  },
+  "foods_to_avoid": {
+    "zh": ["辣椒", "油炸食品", "烧烤", "酒精"],
+    "en": ["Chili peppers", "Fried foods", "Barbecue", "Alcohol"]
+  },
+  "disclaimer": {"zh": "...", "en": "..."},
+  "generated_at": "2026-05-26T08:00:00+00:00"
+}
+```
+
+If `DEEPSEEK_API_KEY` is missing the agent call raises at request time. Without it the diagnose endpoint cannot produce real output — set the key in `.env` before running the full flow.
+
 ### Disclaimer
 
 This project is for **research and educational purposes only**. The AI output does **not** constitute a medical diagnosis. Always consult a licensed TCM practitioner.
@@ -332,7 +413,7 @@ This project is for **research and educational purposes only**. The AI output do
 
 ### 架构
 
-![ArchitectureDesign](README.assets/ArchitectureDesign-9080273.jpg)
+![ArchitectureDesign](README.assets/ArchitectureDesign-9803755.jpg)
 
 ### 项目结构
 
@@ -340,23 +421,24 @@ This project is for **research and educational purposes only**. The AI output do
 code/
 ├── web/              React + Vite 单页面应用（中英双语界面）
 ├── api/              FastAPI 服务，向 web 端提供所需接口
-├── ai-agent/         智能体：根据基本信息、舌象与脉象生成中医辨证报告
-├── tongue/  舌象图像模型的训练与推理
-├── pulse/   脉象信号的训练与推理，预测舒张压和收缩压
+├── ai_agent/         智能体：根据基本信息、舌象与脉象生成中医辨证报告
+├── tongue/           舌象图像模型的训练与推理（YOLO）
+├── pulse/            脉象波形的训练与推理（CNN1D → SBP / DBP 预测）
 ├── docker-compose.yml
+├── env.example       项目级 `.env` 模板（详见"环境变量"小节）
 ├── .venv/            本地 Python 3.10 虚拟环境（开发者自行创建）
 └── README.md
 ```
 
 模块职责：
 
-| 模块               | 说明                                             |
-|--------------------|------------------------------------------------|
-| `web`              | 四步式问诊界面：基本信息 → 舌象采集 → 脉象采集 → 智能辨证。古典中医风格，中英双语。 |
-| `api`              | FastAPI 接口层，校验请求、维护会话、返回中英双语的辨证数据。             |
-| `ai-agent`         | 调度 LLM 与知识检索，输出综合辨证报告（规划中）。                    |
-| `tongue`  | 舌质、舌苔、舌形的视觉模型（规划中）。                            |
-| `pulse`   | 根据脉搏预测心脏的舒张压和收缩压                               |
+| 模块         | 说明                                                                                              |
+|--------------|---------------------------------------------------------------------------------------------------|
+| `web`        | 四步式问诊界面：基本信息 → 舌象采集 → 脉象采集 → 智能辨证。古典中医风格，中英双语。                |
+| `api`        | FastAPI 接口层，校验请求、维护会话、返回中英双语的辨证数据。                                       |
+| `ai_agent`   | 基于 DeepSeek V3 的智能体；将基本信息、舌象与脉象组合成 prompt，输出结构化的双语辨证报告。         |
+| `tongue`     | YOLO 舌象检测模型，识别舌质、舌苔、舌形等特征，并通过规则引擎输出健康风险提示。                    |
+| `pulse`      | 1D-CNN 模型，将 256 个采样点的 PPG 窗口映射为 `(SBP, DBP)` 血压预测。                              |
 
 ### 快速启动 — Docker
 
@@ -405,6 +487,28 @@ npm run dev
 ```
 
 浏览器访问 <http://localhost:5173>。Vite 开发服务器会将 `/api/*` 转发到 8000 端口的 FastAPI 服务。
+
+### 环境变量
+
+部分模块需要外部 API Key。先把模板复制一份，再填上真实值：
+
+```bash
+cp env.example .env
+# 然后编辑 .env，写入实际的 key
+```
+
+`docker compose` 通过 api 服务的 `env_file:` 自动加载 `.env`；Python 模块同时会兜底调用 `load_dotenv(<repo>/.env)`，因此手动启动（不使用 Docker）的方式同样能读到这些变量。
+
+| 变量名                    | 谁需要                                            | 用途                                                                                                                                       |
+|---------------------------|---------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| `DEEPSEEK_API_KEY`        | `ai_agent/agent.py`                               | DeepSeek V3（`deepseek-chat`）— 生成最终辨证报告的 LLM。前往 <https://platform.deepseek.com> 申请。未设置时 `/api/sessions/{id}/diagnose` 无法产出真实结果。 |
+| `PEXELS_API_KEY`          | `api/app/pexels.py` → `GET /api/foods/image`      | Pexels 图片搜索；用于在辨证结果页的食材 chip 上展示真实照片。免费 key 申请：<https://www.pexels.com/api/>。未设置时 chip 仅显示占位 SVG，应用其他功能不受影响。 |
+| `TCM_PULSE_ANALYSIS_ROOT` | `api/app/pulse_predictor.py`（可选）              | 覆盖 API 查找 `pulse/` 包的根目录。默认指向仓库同级目录下的 `pulse/`；在 Docker 中通常设为 `/pulse`。                                       |
+| `TCM_PULSE_MODEL_PATH`    | `api/app/pulse_predictor.py`（可选）              | 覆盖脉搏模型权重路径。默认为 `<TCM_PULSE_ANALYSIS_ROOT>/best_model.pth`。                                                                  |
+| `API_TARGET`              | `web/vite.config.js`（仅开发）                    | Vite 将 `/api/*` 转发到的目标 URL。默认 `http://localhost:8000`；docker-compose 中 web 服务会设为 `http://api:8000`。                       |
+| `DOCKER`                  | `web/vite.config.js`（仅开发）                    | 在 Docker 中设置为真值，让 Vite 使用轮询监听文件（macOS Docker 下 bind-mount 事件不可靠）。                                                  |
+
+**必填**的只有 `DEEPSEEK_API_KEY` 和 `PEXELS_API_KEY`，其余都有合理默认值，仅在路径变动时才需显式设置。
 
 ### API 接口一览
 
@@ -640,6 +744,59 @@ print(f"Predicted DBP: {dbp:.2f}")
 ```
 
 所有面向用户的文案统一采用 `{zh, en}` 双语结构，前端通过 `pickLang` 即可按当前语言选择字段，无需额外请求。
+
+### AI Agent — 概览
+
+`ai_agent/` 是基于 LLM 的辨证层，把基本信息、舌象模型输出与脉搏 SBP/DBP 预测组合成完整的中医辨证报告。底层模型为 **DeepSeek V3**（`deepseek-chat`），通过 OpenAI 兼容接口（`AsyncOpenAI`）调用。
+
+| 内容                | 路径                                                                                                |
+|---------------------|-----------------------------------------------------------------------------------------------------|
+| 对外入口            | `ai_agent/agent.py` → `async generate_diagnosis(session_id, patient, tongue_ml, pulse_analysis)`    |
+| 系统 prompt         | `ai_agent/agent.py` 中的 `SYSTEM_PROMPT` 常量                                                       |
+| Prompt 构造         | `_build_prompt(patient, tongue_ml, pulse_analysis)` —— 将三类输入拼成中文 prompt                    |
+| 模块说明            | [`ai_agent/README.md`](ai_agent/README.md)                                                          |
+| 鉴权                | 从环境变量 / `.env` 读取 `DEEPSEEK_API_KEY`（详见[环境变量](#环境变量)）                            |
+
+Agent 的返回值可**直接**喂给 `DiagnosisResult` pydantic 模型：所有面向用户的文案均为 `{zh, en}`，食材列表为 `{zh: [...], en: [...]}`，与结果页 chip 的渲染一一对应。
+
+### AI Agent — 辨证流程
+
+`POST /api/sessions/{id}/diagnose` 接到请求后会调用 `ai_agent.agent.generate_diagnosis`，整体流程：
+
+1. 从会话存储中取出该 session 的 `PatientInfo`、`TongueAnalysis`（步骤 2 上传得到）与 `PulseAnalysis`（步骤 3 采集得到）。
+2. `_build_prompt(...)` 用中文整理出一段用户消息，内容包括：
+   - 基本信息（年龄、性别、身高、体重、BMI）；
+   - 舌象 YOLO 输出：每个识别到的特征 + 规则引擎给出的风险列表，保留中英双语字段；
+   - 脉搏 SBP / DBP（如已采集）。
+3. `generate_diagnosis` 以 `response_format={"type": "json_object"}` 调用 DeepSeek，并通过 `SYSTEM_PROMPT` 强约束模型直接输出符合 `DiagnosisResult` 的 JSON：无 markdown、无多余字段。
+4. 端点把结构化结果原样返回给 SPA，前端在辨证结果卡上渲染辨证名、综合分析、调理建议（作息 / 饮食 / 代茶饮）、推荐食物、忌口食物与免责声明。
+
+**响应结构示例**（与 `api/app/models.py` 中的 `DiagnosisResult` 完全一致）：
+
+```json
+{
+  "session_id": "abc123",
+  "pattern":  {"zh": "湿热内蕴证", "en": "Damp-Heat Accumulation Pattern"},
+  "summary":  {"zh": "...", "en": "..."},
+  "advice": {
+    "lifestyle":  {"zh": "...", "en": "..."},
+    "diet":       {"zh": "...", "en": "..."},
+    "herbal_tea": {"zh": "...", "en": "..."}
+  },
+  "food_recommendations": {
+    "zh": ["冬瓜", "绿豆", "苦瓜", "莲藕", "茯苓"],
+    "en": ["Winter melon", "Mung beans", "Bitter melon", "Lotus root", "Poria"]
+  },
+  "foods_to_avoid": {
+    "zh": ["辣椒", "油炸食品", "烧烤", "酒精"],
+    "en": ["Chili peppers", "Fried foods", "Barbecue", "Alcohol"]
+  },
+  "disclaimer": {"zh": "...", "en": "..."},
+  "generated_at": "2026-05-26T08:00:00+00:00"
+}
+```
+
+若未设置 `DEEPSEEK_API_KEY`，调用 DeepSeek 时会抛出鉴权异常，`/diagnose` 端点无法生成真实结果。完整体验请先在 `.env` 中填入 key。
 
 ### 免责声明
 
