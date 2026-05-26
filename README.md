@@ -21,7 +21,7 @@ code/
 ├── api/              FastAPI service exposing the endpoints consumed by the web app
 ├── ai-agent/         AI agent that synthesises patient info, tongue and pulse results
 │                     into a TCM pattern differentiation
-├── tongue-analysis/  Model training & inference for tongue images
+├── tongue/  Model training & inference for tongue images
 ├── pulse/   Model training & inference for pulse waveforms, predict SBP/DBP 
 ├── docker-compose.yml
 ├── .venv/            Local Python 3.10 virtualenv (created by the developer)
@@ -35,7 +35,7 @@ Module responsibilities:
 | `web`             | Four-step UI: patient info → tongue photo → pulse capture → AI diagnosis. Traditional Chinese styling, Chinese & English. |
 | `api`             | FastAPI HTTP layer. Validates input, stores sessions, returns bilingual analyses.                                         |
 | `ai-agent`        | Orchestrates LLM + retrieval to produce the final pattern report (planned).                                               |
-| `tongue-analysis` | Vision model for tongue body / coating / shape (planned).                                                                 |
+| `tongue` | Vision model for tongue body / coating / shape (planned).                                                                 |
 | `pulse`  | Signal-processing & prediction of SBP/DBP.                                                                                |
 
 ### Quick start — Docker
@@ -282,7 +282,7 @@ code/
 ├── web/              React + Vite 单页面应用（中英双语界面）
 ├── api/              FastAPI 服务，向 web 端提供所需接口
 ├── ai-agent/         智能体：根据基本信息、舌象与脉象生成中医辨证报告
-├── tongue-analysis/  舌象图像模型的训练与推理
+├── tongue/  舌象图像模型的训练与推理
 ├── pulse/   脉象信号的训练与推理，预测舒张压和收缩压
 ├── docker-compose.yml
 ├── .venv/            本地 Python 3.10 虚拟环境（开发者自行创建）
@@ -296,7 +296,7 @@ code/
 | `web`              | 四步式问诊界面：基本信息 → 舌象采集 → 脉象采集 → 智能辨证。古典中医风格，中英双语。 |
 | `api`              | FastAPI 接口层，校验请求、维护会话、返回中英双语的辨证数据。             |
 | `ai-agent`         | 调度 LLM 与知识检索，输出综合辨证报告（规划中）。                    |
-| `tongue-analysis`  | 舌质、舌苔、舌形的视觉模型（规划中）。                            |
+| `tongue`  | 舌质、舌苔、舌形的视觉模型（规划中）。                            |
 | `pulse`   | 根据脉搏预测心脏的舒张压和收缩压                               |
 
 ### 快速启动 — Docker
