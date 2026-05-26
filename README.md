@@ -21,7 +21,7 @@ code/
 ├── api/              FastAPI service exposing the endpoints consumed by the web app
 ├── ai-agent/         AI agent that synthesises patient info, tongue and pulse results
 │                     into a TCM pattern differentiation
-├── tongue-analysis/  Model training & inference for tongue images
+├── tongue/  Model training & inference for tongue images
 ├── pulse/   Model training & inference for pulse waveforms, predict SBP/DBP 
 ├── docker-compose.yml
 ├── .venv/            Local Python 3.10 virtualenv (created by the developer)
@@ -35,7 +35,7 @@ Module responsibilities:
 | `web`             | Four-step UI: patient info → tongue photo → pulse capture → AI diagnosis. Traditional Chinese styling, Chinese & English. |
 | `api`             | FastAPI HTTP layer. Validates input, stores sessions, returns bilingual analyses.                                         |
 | `ai-agent`        | Orchestrates LLM + retrieval to produce the final pattern report (planned).                                               |
-| `tongue-analysis` | Vision model for tongue body / coating / shape (planned).                                                                 |
+| `tongue` | Vision model for tongue body / coating / shape (planned).                                                                 |
 | `pulse`  | Signal-processing & prediction of SBP/DBP.                                                                                |
 
 ### Quick start — Docker
@@ -263,6 +263,65 @@ print(f"Predicted DBP: {dbp:.2f}")
 **Important:** the input window must be **256 samples at 125 Hz** (≈ 2.048 s) — the same shape used during preprocessing and training. Different lengths will fail at the convolution stage.
 
 
+### Tongue analysis — overview
+
+`tongue/` contains a YOLO-based tongue-image analyser. It detects classical tongue features (white coating, cracked tongue, dentate tongue, etc.) and produces health-risk hints via a rule engine in `tongue/coco/tongue_label_profiles.json`.
+
+| Item              | Location                                                       |
+|-------------------|----------------------------------------------------------------|
+| Training script   | `tongue/train_yolo.py`                                         |
+| Single-image CLI  | `tongue/coco/predict_tongue_disease.py`                        |
+| Bytes → JSON      | `tongue/predict_result_from_bytes.py` (called from the API)    |
+| Standalone API    | `tongue/coco/tongue_disease_api.py`                            |
+| Dataset YAML      | `tongue/coco/shezhenv3_coco_dataset.yaml`                      |
+| Label rules       | `tongue/coco/tongue_label_profiles.json`                       |
+| Model checkpoint  | `tongue/weights/best.pt`                                       |
+
+See [`tongue/README.md`](tongue/README.md) for the full dataset / training / inference walkthrough.
+
+### Tongue analysis — API integration
+
+`POST /api/sessions/{id}/tongue` is wired to the real YOLO model through `api/app/tongue_predictor.py`. The flow:
+
+1. The uploaded image bytes are passed to `tongue.predict_result_from_bytes.generate_predict_result_json_from_bytes(...)`, which spawns the YOLO predictor as a subprocess and returns a JSON string.
+2. `tongue_analysis_from_json(result_str)` parses that JSON, splits every concatenated bilingual string (e.g. `"白苔舌White coating tongue"`) into a `BilingualText({zh, en})`, and maps it into the typed `TongueAnalysis` model.
+3. On any failure (predictor crash, malformed JSON, missing weights) the endpoint falls back to `mock_data.mock_tongue_analysis(...)` so the four-step demo flow keeps working. The log line `[upload_tongue] source={model|mock}` shows which path each request took.
+
+The bilingual-string splitter (`split_zh_en`) is a small heuristic: it locates the first Latin letter in the source string and treats everything before as `zh`, everything from that index onwards as `en`. Works on both short labels (`"齿痕舌Dentate tongue"`) and full sentences whose Chinese ends with `。` followed by an English sentence.
+
+**Response shape** (`TongueAnalysis`):
+
+```json
+{
+  "detected_labels": [
+    {"name": {"zh": "白苔舌", "en": "White coating tongue"}, "count": 1},
+    {"name": {"zh": "裂纹舌", "en": "Cracked tongue"},        "count": 1},
+    {"name": {"zh": "齿痕舌", "en": "Dentate tongue"},        "count": 2}
+  ],
+  "possible_disease_or_health_risks": [
+    {"risk": {"zh": "津液不足风险", "en": "Risk of Insufficient Body Fluids"}, "score": 1.135}
+  ],
+  "detections": [
+    {
+      "class_id": 9,
+      "label": "baitaishe",
+      "name": {"zh": "白苔舌", "en": "White coating tongue"},
+      "confidence": 0.8637,
+      "meaning": {
+        "zh": "舌苔偏白，常作为寒湿、脾胃功能偏弱或早期外感的观察信号。",
+        "en": "A white coating on the tongue is often seen as a sign of cold-dampness, weak spleen function, or early external contraction."
+      },
+      "possible_risks": [
+        {"zh": "寒湿风险",         "en": "Risk of Cold-Dampness"},
+        {"zh": "脾胃功能偏弱风险", "en": "Risk of Weak Spleen Function"}
+      ]
+    }
+  ]
+}
+```
+
+Every user-facing string follows the project's `{zh, en}` convention so the frontend's `pickLang` helper renders the right language without an extra round-trip.
+
 ### Disclaimer
 
 This project is for **research and educational purposes only**. The AI output does **not** constitute a medical diagnosis. Always consult a licensed TCM practitioner.
@@ -282,7 +341,7 @@ code/
 ├── web/              React + Vite 单页面应用（中英双语界面）
 ├── api/              FastAPI 服务，向 web 端提供所需接口
 ├── ai-agent/         智能体：根据基本信息、舌象与脉象生成中医辨证报告
-├── tongue-analysis/  舌象图像模型的训练与推理
+├── tongue/  舌象图像模型的训练与推理
 ├── pulse/   脉象信号的训练与推理，预测舒张压和收缩压
 ├── docker-compose.yml
 ├── .venv/            本地 Python 3.10 虚拟环境（开发者自行创建）
@@ -296,7 +355,7 @@ code/
 | `web`              | 四步式问诊界面：基本信息 → 舌象采集 → 脉象采集 → 智能辨证。古典中医风格，中英双语。 |
 | `api`              | FastAPI 接口层，校验请求、维护会话、返回中英双语的辨证数据。             |
 | `ai-agent`         | 调度 LLM 与知识检索，输出综合辨证报告（规划中）。                    |
-| `tongue-analysis`  | 舌质、舌苔、舌形的视觉模型（规划中）。                            |
+| `tongue`  | 舌质、舌苔、舌形的视觉模型（规划中）。                            |
 | `pulse`   | 根据脉搏预测心脏的舒张压和收缩压                               |
 
 ### 快速启动 — Docker
@@ -522,6 +581,65 @@ print(f"Predicted DBP: {dbp:.2f}")
 | `predict(ppg)`    | 在 `torch.no_grad()` 上下文中执行前向推理，返回两个 Python `float`，单位 mmHg。       |
 
 **注意：** 输入窗口必须为 **125 Hz 下的 256 个采样点**（≈ 2.048 秒），与预处理、训练阶段保持一致；长度不同会在卷积层报错。
+
+### 舌象分析 — 概览
+
+`tongue/` 目录提供基于 YOLO 的舌象图像分析：识别经典舌象特征（白苔舌、裂纹舌、齿痕舌等），并通过规则表 `tongue/coco/tongue_label_profiles.json` 输出健康风险提示。
+
+| 内容             | 路径                                                          |
+|------------------|---------------------------------------------------------------|
+| 训练脚本         | `tongue/train_yolo.py`                                        |
+| 单图推理 CLI     | `tongue/coco/predict_tongue_disease.py`                       |
+| bytes → JSON     | `tongue/predict_result_from_bytes.py`（由 API 调用）          |
+| 独立 API         | `tongue/coco/tongue_disease_api.py`                           |
+| 数据集 YAML      | `tongue/coco/shezhenv3_coco_dataset.yaml`                     |
+| 类别 → 提示映射  | `tongue/coco/tongue_label_profiles.json`                      |
+| 模型权重         | `tongue/weights/best.pt`                                      |
+
+数据集、训练与推理的完整说明详见 [`tongue/README.md`](tongue/README.md)。
+
+### 舌象分析 — API 集成
+
+`POST /api/sessions/{id}/tongue` 通过 `api/app/tongue_predictor.py` 接入真实的 YOLO 模型，流程如下：
+
+1. 上传的图片 bytes 交由 `tongue.predict_result_from_bytes.generate_predict_result_json_from_bytes(...)` 处理，该函数以子进程方式运行 YOLO 预测脚本，并返回 JSON 字符串。
+2. `tongue_analysis_from_json(result_str)` 解析该 JSON，将所有中英拼接的字符串（如 `"白苔舌White coating tongue"`）拆分为 `BilingualText({zh, en})`，最终映射为强类型的 `TongueAnalysis`。
+3. 任何环节失败（预测脚本崩溃、JSON 异常、权重缺失等）时，端点会自动回落到 `mock_data.mock_tongue_analysis(...)`，保证四步流程能继续走通。日志 `[upload_tongue] source={model|mock}` 可直观看出每次请求走了哪条路径。
+
+中英拆分函数 `split_zh_en` 采用一个小启发式：定位字符串中**第一个 Latin 字母**的位置，前半视为中文（含中文标点），其后视为英文。短标签（如 `"齿痕舌Dentate tongue"`）与完整句子（中文以 `。` 结尾、其后接英文句子）均能正确切分。
+
+**响应结构**（`TongueAnalysis`）：
+
+```json
+{
+  "detected_labels": [
+    {"name": {"zh": "白苔舌", "en": "White coating tongue"}, "count": 1},
+    {"name": {"zh": "裂纹舌", "en": "Cracked tongue"},        "count": 1},
+    {"name": {"zh": "齿痕舌", "en": "Dentate tongue"},        "count": 2}
+  ],
+  "possible_disease_or_health_risks": [
+    {"risk": {"zh": "津液不足风险", "en": "Risk of Insufficient Body Fluids"}, "score": 1.135}
+  ],
+  "detections": [
+    {
+      "class_id": 9,
+      "label": "baitaishe",
+      "name": {"zh": "白苔舌", "en": "White coating tongue"},
+      "confidence": 0.8637,
+      "meaning": {
+        "zh": "舌苔偏白，常作为寒湿、脾胃功能偏弱或早期外感的观察信号。",
+        "en": "A white coating on the tongue is often seen as a sign of cold-dampness, weak spleen function, or early external contraction."
+      },
+      "possible_risks": [
+        {"zh": "寒湿风险",         "en": "Risk of Cold-Dampness"},
+        {"zh": "脾胃功能偏弱风险", "en": "Risk of Weak Spleen Function"}
+      ]
+    }
+  ]
+}
+```
+
+所有面向用户的文案统一采用 `{zh, en}` 双语结构，前端通过 `pickLang` 即可按当前语言选择字段，无需额外请求。
 
 ### 免责声明
 
