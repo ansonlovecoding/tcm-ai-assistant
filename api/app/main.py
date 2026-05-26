@@ -22,9 +22,16 @@ from .models import (
     PulseResult,
     PulseSample,
     SessionCreated,
-    TongueResult,
+    TongueResult, PulseAnalysis,
 )
 from .store import store
+from .tongue_predictor import tongue_analysis_from_json
+from pulse.mock_ppg import MockPpg
+from pulse.predict import BloodPressurePredictor
+from tongue.predict_result_from_bytes import generate_predict_result_json_from_bytes
+
+# Number of consecutive PPG samples the CNN1D model expects (see pulse/train.py).
+PULSE_WINDOW_SIZE = 256
 
 API_DESCRIPTION = """
 Mock backend powering the **Qi-Huang AI / 岐黄智诊** single-page web app.
@@ -156,7 +163,32 @@ async def upload_tongue(session_id: str, image: UploadFile = File(...)) -> Tongu
 
     data = await image.read()
     image_id = uuid4().hex[:10]
-    analysis = mock_data.mock_tongue_analysis(session_id, data)
+
+    # Run the real YOLO tongue predictor and parse its JSON into our typed
+    # TongueAnalysis. If anything goes wrong (predictor crash, malformed
+    # JSON, weights missing, …) return None
+
+    # analysis_source = "mock"
+    # analysis = mock_data.mock_tongue_analysis(session_id, data)
+
+    analysis = None
+    analysis_source = "model"
+    try:
+        result_str = generate_predict_result_json_from_bytes(data)
+        analysis = tongue_analysis_from_json(result_str)
+    except Exception as exc:
+        print(f"[upload_tongue] tongue predictor failed: {exc}")
+        return TongueResult(
+            session_id=session_id,
+            image_id=image_id,
+            received_bytes=len(data),
+            analysis=analysis,
+        )
+
+    print(
+        f"[upload_tongue] {session_id=} {image_id=} bytes={len(data)} source={analysis_source} "
+        f"detections={len(analysis.detections)} risks={len(analysis.possible_disease_or_health_risks)}"
+    )
 
     session.tongue_image_id = image_id
     session.tongue_image_bytes = len(data)
@@ -185,11 +217,24 @@ def submit_pulse(session_id: str, sample: PulseSample) -> PulseResult:
     except KeyError:
         raise HTTPException(status_code=404, detail="session not found")
 
-    waveform = sample.waveform or mock_data.mock_pulse_waveform(
-        sample.duration_ms, sample.sample_rate_hz
-    )
+    # Real PPG window from the web (via the serial-connected pulse sensor),
+    # or fall back to the simulated waveform when the device is unavailable
+    # (e.g. browser without Web Serial, dev machine without the sensor).
+    if sample.waveform and len(sample.waveform) >= PULSE_WINDOW_SIZE:
+        waveform = sample.waveform[:PULSE_WINDOW_SIZE]
+        waveform_source = "device"
+    else:
+        waveform = MockPpg().ppg
+        waveform_source = "mock"
+
     capture_id = uuid4().hex[:10]
-    analysis = mock_data.mock_pulse_analysis(session_id, capture_id, len(waveform))
+    print(f"[submit_pulse] {session_id=} {capture_id=} samples={len(waveform)} source={waveform_source}")
+
+    predictor = BloodPressurePredictor()
+    sbp, dbp = predictor.predict(waveform)
+    analysis = PulseAnalysis(sbp=sbp, dbp=dbp)
+    print(f"Predicted SBP: {sbp:.2f}")
+    print(f"Predicted DBP: {dbp:.2f}")
 
     session.pulse_capture_id = capture_id
     session.pulse_sample_count = len(waveform)

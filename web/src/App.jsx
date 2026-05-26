@@ -22,6 +22,7 @@ export default function App() {
   const [tongueFile, setTongueFile] = useState(null)
   const [tongueAnalysis, setTongueAnalysis] = useState(null)
   const [pulseCaptured, setPulseCaptured] = useState(false)
+  const [pulseWaveform, setPulseWaveform] = useState(null)
   const [pulseAnalysis, setPulseAnalysis] = useState(null)
 
   const [transitioning, setTransitioning] = useState(false)
@@ -38,7 +39,10 @@ export default function App() {
       return patient.age && patient.gender && patient.height && patient.weight
     }
     if (stepIndex === 1) return !!tongueFile
-    if (stepIndex === 2) return pulseCaptured
+    // Step 2 (pulse) — always advanceable. If no waveform has been captured,
+    // the backend falls back to MockPpg so the demo flow keeps working
+    // without a physical device.
+    if (stepIndex === 2) return true
     return true
   }
 
@@ -58,7 +62,7 @@ export default function App() {
       } else if (stepIndex === 2) {
         const sid = sessionId
         if (!sid) throw new Error('missing session')
-        const result = await api.submitPulse(sid, { durationMs: 30000, sampleRateHz: 200 })
+        const result = await api.submitPulse(sid, { waveform: pulseWaveform || [] })
         setPulseAnalysis(result.analysis)
       }
       setStepIndex((i) => Math.min(i + 1, STEP_KEYS.length - 1))
@@ -79,6 +83,7 @@ export default function App() {
     setTongueFile(null)
     setTongueAnalysis(null)
     setPulseCaptured(false)
+    setPulseWaveform(null)
     setPulseAnalysis(null)
     setSessionId(null)
     setError(null)
@@ -92,7 +97,16 @@ export default function App() {
       case 'tongue':
         return <TonguePhoto file={tongueFile} onChange={setTongueFile} />
       case 'pulse':
-        return <PulseWave captured={pulseCaptured} onCapturedChange={setPulseCaptured} />
+        return (
+          <PulseWave
+            captured={pulseCaptured}
+            waveform={pulseWaveform}
+            onCapturedChange={(done, waveform) => {
+              setPulseCaptured(done)
+              setPulseWaveform(done ? waveform : null)
+            }}
+          />
+        )
       case 'diagnose':
         return (
           <Diagnose

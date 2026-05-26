@@ -2,6 +2,16 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api, pickLang } from '../../api.js'
 
+// One-line summary for the review screen: list every distinct detected
+// label with its count, e.g. "白苔舌×1, 裂纹舌×1, 齿痕舌×2".
+function formatTongueSummary(analysis, lang) {
+  const labels = analysis?.detected_labels
+  if (!Array.isArray(labels) || labels.length === 0) return ''
+  return labels
+    .map((l) => `${pickLang(l.name, lang)}${l.count > 1 ? `×${l.count}` : ''}`)
+    .join(', ')
+}
+
 export default function Diagnose({
   sessionId,
   patient,
@@ -55,7 +65,7 @@ export default function Diagnose({
     {
       label: t('diagnose.field_tongue'),
       value: tongueAnalysis
-        ? pickLang(tongueAnalysis.body_color, lang)
+        ? formatTongueSummary(tongueAnalysis, lang) || t('diagnose.value_uploaded')
         : tongueFile
           ? t('diagnose.value_uploaded')
           : t('diagnose.value_missing')
@@ -63,7 +73,7 @@ export default function Diagnose({
     {
       label: t('diagnose.field_pulse'),
       value: pulseAnalysis
-        ? `${pickLang(pulseAnalysis.pulse_type, lang)} · ${pulseAnalysis.rate_bpm} bpm`
+        ? `SBP: ${pulseAnalysis.sbp.toFixed(2)} mmHg, DBP: ${pulseAnalysis.dbp.toFixed(2)} mmHg`
         : pulseCaptured
           ? t('diagnose.value_captured')
           : t('diagnose.value_missing')

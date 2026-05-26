@@ -55,11 +55,49 @@ class BilingualText(BaseModel):
     )
 
 
+class TongueDetectedLabel(BaseModel):
+    """One distinct tongue feature found by the YOLO model, with its count."""
+
+    name: BilingualText = Field(..., description="Class name (bilingual).")
+    count: int = Field(..., description="How many times this label was detected in the image.")
+
+
+class TongueHealthRisk(BaseModel):
+    """An aggregated health-risk hint derived from the detected features."""
+
+    risk: BilingualText = Field(..., description="Risk indicator name (bilingual).")
+    score: float = Field(..., description="Aggregated score from the rule engine; higher = stronger signal.")
+
+
+class TongueDetection(BaseModel):
+    """A single bounding-box detection emitted by the YOLO model."""
+
+    class_id: int = Field(..., description="Numeric class id from the YOLO model.")
+    label: str = Field(..., description="Short slug label (e.g. 'baitaishe').")
+    name: BilingualText = Field(..., description="Class name (bilingual).")
+    confidence: float = Field(..., description="Detection confidence in [0, 1].")
+    meaning: BilingualText = Field(..., description="Interpretation of this feature (bilingual).")
+    possible_risks: list[BilingualText] = Field(
+        default_factory=list,
+        description="Risk indicators that this detection contributes to.",
+    )
+
+
 class TongueAnalysis(BaseModel):
-    body_color: BilingualText = Field(..., description="舌质 — colour of the tongue body.")
-    coating: BilingualText = Field(..., description="舌苔 — tongue coating.")
-    shape: BilingualText = Field(..., description="舌形 — shape and size of the tongue.")
-    notes: BilingualText = Field(..., description="Interpretive remarks.")
+    """Structured tongue-image analysis matching the model's JSON output."""
+
+    detected_labels: list[TongueDetectedLabel] = Field(
+        default_factory=list,
+        description="All distinct tongue features detected, with counts.",
+    )
+    possible_disease_or_health_risks: list[TongueHealthRisk] = Field(
+        default_factory=list,
+        description="Health-risk indicators aggregated from the detections, ranked by score.",
+    )
+    detections: list[TongueDetection] = Field(
+        default_factory=list,
+        description="Raw per-instance detections.",
+    )
 
 
 class TongueResult(BaseModel):
@@ -75,13 +113,34 @@ class TongueResult(BaseModel):
                 "image_id": "75d5108ed0",
                 "received_bytes": 184231,
                 "analysis": {
-                    "body_color": {"zh": "淡红舌", "en": "Pale red body"},
-                    "coating": {"zh": "薄白苔", "en": "Thin white coating"},
-                    "shape": {"zh": "舌体适中，边缘略齿痕", "en": "Moderate size, slight teeth marks on edges"},
-                    "notes": {
-                        "zh": "提示气虚倾向，脾胃功能略弱。",
-                        "en": "Suggests mild Qi deficiency and a slightly weak spleen-stomach.",
-                    },
+                    "detected_labels": [
+                        {"name": {"zh": "白苔舌", "en": "White coating tongue"}, "count": 1},
+                        {"name": {"zh": "裂纹舌", "en": "Cracked tongue"},        "count": 1},
+                        {"name": {"zh": "齿痕舌", "en": "Dentate tongue"},        "count": 2},
+                    ],
+                    "possible_disease_or_health_risks": [
+                        {"risk": {"zh": "津液不足风险", "en": "Risk of Insufficient Body Fluids"},                  "score": 1.135},
+                        {"risk": {"zh": "阴虚风险",     "en": "Risk of Yin Deficiency"},                          "score": 1.135},
+                        {"risk": {"zh": "脾虚湿重风险", "en": "Risk of Spleen Deficiency and Excessive Dampness"}, "score": 1.124},
+                        {"risk": {"zh": "寒湿风险",     "en": "Risk of Cold-Dampness"},                            "score": 0.864},
+                        {"risk": {"zh": "脾胃功能偏弱风险", "en": "Risk of Weak Spleen Function"},                   "score": 0.864},
+                    ],
+                    "detections": [
+                        {
+                            "class_id": 9,
+                            "label": "baitaishe",
+                            "name": {"zh": "白苔舌", "en": "White coating tongue"},
+                            "confidence": 0.8637,
+                            "meaning": {
+                                "zh": "舌苔偏白，常作为寒湿、脾胃功能偏弱或早期外感的观察信号。",
+                                "en": "A white coating on the tongue is often seen as a sign of cold-dampness, weak spleen function, or early external contraction.",
+                            },
+                            "possible_risks": [
+                                {"zh": "寒湿风险", "en": "Risk of Cold-Dampness"},
+                                {"zh": "脾胃功能偏弱风险", "en": "Risk of Weak Spleen Function"},
+                            ],
+                        }
+                    ],
                 },
             }
         }
@@ -90,31 +149,20 @@ class TongueResult(BaseModel):
 
 class PulseSample(BaseModel):
     """Capture metadata submitted from the external pulse-diagnosis device."""
-
-    duration_ms: conint(gt=0, le=120_000) = Field(
-        30_000, description="Capture duration in milliseconds (max 120 000)."
-    )
-    sample_rate_hz: conint(gt=0, le=2000) = Field(
-        200, description="Sampling rate in Hz."
-    )
-    waveform: Optional[list[float]] = Field(
+    waveform: list[float] = Field(
         None,
-        description="Optional raw samples. If omitted, the server mocks a plausible waveform.",
+        description="pulse sample data, length should be more than 256",
     )
 
     model_config = ConfigDict(
         json_schema_extra={
-            "example": {"duration_ms": 30000, "sample_rate_hz": 200}
+            "example": {"waveform": [1.29, 1.2]}
         }
     )
 
-
 class PulseAnalysis(BaseModel):
-    pulse_type: BilingualText = Field(..., description="Classical pulse name (e.g. 弦细).")
-    rate_bpm: int = Field(..., description="Heart rate in beats per minute.")
-    rhythm: BilingualText
-    strength: BilingualText
-    notes: BilingualText
+    sbp: float = Field(..., description="SBP (Systolic Blood Pressure)")
+    dbp: float = Field(..., description="DBP (Diastolic Blood Pressure)")
 
 
 class PulseResult(BaseModel):
@@ -128,16 +176,9 @@ class PulseResult(BaseModel):
             "example": {
                 "session_id": "9bdee0b2aea1",
                 "capture_id": "785a38a8cf",
-                "sample_count": 6000,
                 "analysis": {
-                    "pulse_type": {"zh": "弦细脉", "en": "Wiry and thin pulse"},
-                    "rate_bpm": 78,
-                    "rhythm": {"zh": "节律规整", "en": "Regular rhythm"},
-                    "strength": {"zh": "中等偏弱", "en": "Moderately weak"},
-                    "notes": {
-                        "zh": "多见于肝郁、阴血不足。",
-                        "en": "Often seen in liver Qi stagnation with Yin/blood deficiency.",
-                    },
+                    "sbp": 148.92,
+                    "dbp": 61.52
                 },
             }
         }

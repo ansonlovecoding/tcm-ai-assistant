@@ -2,3 +2,9 @@
 .idea
 .claude
 .env
+pulse/dataset
+pulse/preprocess/plot.png
+api/app/__pycache__
+pulse/__pycache__
+tongue/datasets
+tongue/runs
