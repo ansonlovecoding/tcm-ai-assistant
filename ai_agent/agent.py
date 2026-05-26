@@ -6,8 +6,12 @@ from typing import Optional
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 
-load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+if not os.getenv('DEEPSEEK_API_KEY'):
+    # if DEEPSEEK_API_KEY is not in the environment, try load the env file from the project directory
+    BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+    load_dotenv(os.path.join(BASE_DIR, ".env"))
 
+print(f'DEEPSEEK_API_KEY: {os.getenv("DEEPSEEK_API_KEY")}')
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 
 # ---------------------------------------------------------------------------
