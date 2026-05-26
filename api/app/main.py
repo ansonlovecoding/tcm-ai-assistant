@@ -9,6 +9,8 @@ Interactive documentation is available at:
 
 from __future__ import annotations
 
+import datetime
+import os
 from uuid import uuid4
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -26,9 +28,12 @@ from .models import (
 )
 from .store import store
 from .tongue_predictor import tongue_analysis_from_json
+from . import pexels
 from pulse.mock_ppg import MockPpg
 from pulse.predict import BloodPressurePredictor
 from tongue.predict_result_from_bytes import generate_predict_result_json_from_bytes
+from ai_agent.agent import generate_diagnosis
+from dotenv import load_dotenv
 
 # Number of consecutive PPG samples the CNN1D model expects (see pulse/train.py).
 PULSE_WINDOW_SIZE = 256
@@ -78,6 +83,10 @@ TAGS_METADATA = [
     },
 ]
 
+if not os.getenv('PEXELS_API_KEY'):
+    # if DEEPSEEK_API_KEY is not in the environment, try load the env file from the project directory
+    BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+    load_dotenv(os.path.join(BASE_DIR, ".env"))
 app = FastAPI(
     title="TCM Diagnosis API",
     summary="Mock backend for the Qi-Huang AI / 岐黄智诊 SPA.",
@@ -120,6 +129,37 @@ def root() -> RedirectResponse:
 def health() -> dict:
     """Return `{"status": "ok"}` plus the number of sessions held in memory."""
     return {"status": "ok", "sessions": len(store.all())}
+
+
+@app.get(
+    "/api/foods/image",
+    tags=["Sessions"],
+    summary="Find a Pexels photo for a food name",
+    response_description="`{query, url}` if a photo is found.",
+    responses={
+        404: {"description": "No photo matched the query."},
+        503: {"description": "PEXELS_API_KEY is not configured on the server."},
+    },
+)
+def food_image(q: str) -> dict:
+    """Proxy the Pexels Photo Search API so the API key stays server-side.
+
+    Used by the diagnosis result card to render real food photos next to
+    each recommendation / avoid chip.
+    """
+    if not q or not q.strip():
+        raise HTTPException(status_code=400, detail="missing query")
+    try:
+        url = pexels.search_photo_url(q)
+    except RuntimeError as exc:  # PEXELS_API_KEY missing
+        raise HTTPException(status_code=503, detail=str(exc))
+    except Exception as exc:  # network / auth / parse — surface clearly
+        print(f"[food_image] pexels lookup failed for {q!r}: {exc}")
+        raise HTTPException(status_code=502, detail=f"pexels lookup failed: {exc}")
+
+    if not url:
+        raise HTTPException(status_code=404, detail="no photo found")
+    return {"query": q, "url": url}
 
 
 @app.post(
@@ -256,18 +296,27 @@ def submit_pulse(session_id: str, sample: PulseSample) -> PulseResult:
     response_description="Pattern, summary, lifestyle/diet/tea advice, and disclaimer.",
     responses={404: {"description": "Session does not exist."}},
 )
-def diagnose(session_id: str) -> DiagnosisResult:
+async def diagnose(session_id: str) -> DiagnosisResult:
     """Synthesise patient + tongue + pulse data into a final pattern report."""
     try:
         session = store.get(session_id)
     except KeyError:
         raise HTTPException(status_code=404, detail="session not found")
 
-    return mock_data.make_diagnosis_result(
-        session_id=session.id,
-        patient=session.patient,
-        tongue=session.tongue_analysis,
-        pulse=session.pulse_analysis,
+    diagnosis = await generate_diagnosis(
+        session_id,
+        session.patient,
+        session.tongue_analysis,
+        session.pulse_analysis)
+    return DiagnosisResult(
+        session_id=session_id,
+        pattern=diagnosis.get('pattern'),
+        summary=diagnosis.get('summary'),
+        advice=diagnosis.get('advice'),
+        disclaimer=diagnosis.get('disclaimer'),
+        food_recommendations=diagnosis.get('food_recommendations'),
+        foods_to_avoid=diagnosis.get('foods_to_avoid'),
+        generated_at=diagnosis.get('generated_at'),
     )
 
 

@@ -190,6 +190,9 @@ class DiagnosisAdvice(BaseModel):
     diet: BilingualText = Field(..., description="饮食建议。")
     herbal_tea: BilingualText = Field(..., description="代茶饮参考。")
 
+class BilingualList(BaseModel):
+    zh: list[str]
+    en: list[str]
 
 class DiagnosisResult(BaseModel):
     session_id: str
@@ -197,6 +200,8 @@ class DiagnosisResult(BaseModel):
     summary: BilingualText
     advice: DiagnosisAdvice
     disclaimer: BilingualText
+    food_recommendations: BilingualList
+    foods_to_avoid: BilingualList
     generated_at: datetime
 
     model_config = ConfigDict(
@@ -230,6 +235,14 @@ class DiagnosisResult(BaseModel):
                     "en": "AI-generated, for reference only.",
                 },
                 "generated_at": "2026-05-17T19:12:41Z",
+                "food_recommendations": {
+                    "zh": ["推荐食物1", "推荐食物2", "推荐食物3", "推荐食物4", "推荐食物5"],
+                    "en": ["Food 1", "Food 2", "Food 3", "Food 4", "Food 5"]
+                },
+                "foods_to_avoid": {
+                    "zh": ["忌食食物1", "忌食食物2", "忌食食物3", "忌食食物4"],
+                    "en": ["Food 1", "Food 2", "Food 3", "Food 4"]
+                },
             }
         }
     )
