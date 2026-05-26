@@ -197,6 +197,8 @@ class DiagnosisResult(BaseModel):
     summary: BilingualText
     advice: DiagnosisAdvice
     disclaimer: BilingualText
+    food_recommendations: BilingualText
+    foods_to_avoid: BilingualText
     generated_at: datetime
 
     model_config = ConfigDict(
@@ -230,6 +232,14 @@ class DiagnosisResult(BaseModel):
                     "en": "AI-generated, for reference only.",
                 },
                 "generated_at": "2026-05-17T19:12:41Z",
+                "food_recommendations": {
+                    "zh": ["推荐食物1", "推荐食物2", "推荐食物3", "推荐食物4", "推荐食物5"],
+                    "en": ["Food 1", "Food 2", "Food 3", "Food 4", "Food 5"]
+                },
+                "foods_to_avoid": {
+                    "zh": ["忌食食物1", "忌食食物2", "忌食食物3", "忌食食物4"],
+                    "en": ["Food 1", "Food 2", "Food 3", "Food 4"]
+                },
             }
         }
     )

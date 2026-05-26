@@ -9,6 +9,7 @@ Interactive documentation is available at:
 
 from __future__ import annotations
 
+import datetime
 from uuid import uuid4
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -29,6 +30,7 @@ from .tongue_predictor import tongue_analysis_from_json
 from pulse.mock_ppg import MockPpg
 from pulse.predict import BloodPressurePredictor
 from tongue.predict_result_from_bytes import generate_predict_result_json_from_bytes
+from ai_agent.agent import generate_diagnosis
 
 # Number of consecutive PPG samples the CNN1D model expects (see pulse/train.py).
 PULSE_WINDOW_SIZE = 256
@@ -256,18 +258,27 @@ def submit_pulse(session_id: str, sample: PulseSample) -> PulseResult:
     response_description="Pattern, summary, lifestyle/diet/tea advice, and disclaimer.",
     responses={404: {"description": "Session does not exist."}},
 )
-def diagnose(session_id: str) -> DiagnosisResult:
+async def diagnose(session_id: str) -> DiagnosisResult:
     """Synthesise patient + tongue + pulse data into a final pattern report."""
     try:
         session = store.get(session_id)
     except KeyError:
         raise HTTPException(status_code=404, detail="session not found")
 
-    return mock_data.make_diagnosis_result(
-        session_id=session.id,
-        patient=session.patient,
-        tongue=session.tongue_analysis,
-        pulse=session.pulse_analysis,
+    diagnosis = await generate_diagnosis(
+        session_id,
+        session.patient,
+        session.tongue_analysis,
+        session.pulse_analysis)
+    return DiagnosisResult(
+        session_id=session_id,
+        pattern=diagnosis.get('pattern'),
+        summary=diagnosis.get('summary'),
+        advice=diagnosis.get('advice'),
+        disclaimer=diagnosis.get('disclaimer'),
+        food_recommendations=diagnosis.get('food_recommendations'),
+        foods_to_avoid=diagnosis.get('foods_to_avoid'),
+        generated_at=diagnosis.get('generated_at'),
     )
 
 

@@ -6,6 +6,8 @@ from typing import Optional
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 
+from api.app.models import PatientInfo, TongueAnalysis, PulseAnalysis
+
 if not os.getenv('DEEPSEEK_API_KEY'):
     # if DEEPSEEK_API_KEY is not in the environment, try load the env file from the project directory
     BASE_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -56,26 +58,32 @@ food_recommendations 和 foods_to_avoid 必须是具体食物名称的列表，�
 # Prompt builder
 # ---------------------------------------------------------------------------
 
-def _build_prompt(patient: dict, tongue_ml: Optional[dict], pulse_analysis: Optional[dict]) -> str:
-    age    = patient.get("age", "未知")
-    gender = patient.get("gender", "未知")
-    height = patient.get("height", 0)
-    weight = patient.get("weight", 0)
+def _build_prompt(patient: PatientInfo, tongue_ml: Optional[TongueAnalysis], pulse_analysis: Optional[PulseAnalysis]) -> str:
+    age    = patient.age
+    gender = patient.gender
+    height = patient.height
+    weight = patient.weight
     bmi    = weight / ((height / 100) ** 2) if height else 0
 
     lines = [f"【患者基本信息】\n年龄：{age}岁 | 性别：{gender} | 身高：{height}cm | 体重：{weight}kg | BMI：{bmi:.1f}"]
 
     if tongue_ml:
-        labels  = "、".join(tongue_ml.get("detected_labels", {}).keys()) or "未检测到异常"
-        risks   = "、".join(d.get("risk", "") for d in tongue_ml.get("possible_disease_or_health_risks", []))
+        labels = "、".join(
+            d.name.zh
+            for d in tongue_ml.detected_labels
+        ) or "未检测到异常"
+        risks = "、".join(
+            d.risk.zh
+            for d in tongue_ml.possible_disease_or_health_risks
+        )
         details = "\n".join(
-            f"  - {d.get('name')}（置信度 {d.get('confidence', 0):.0%}）：{d.get('meaning', '')}"
-            for d in tongue_ml.get("detections", [])
+            f"  - {d.name.zh} "
+            f"（置信度 {d.confidence:.0%}）："
+            f"{d.meaning.zh}"
+            for d in tongue_ml.detections
         )
         lines.append(
             f"\n【舌象分析】（来源：机器学习视觉检测模型）\n"
-            f"风险等级：{tongue_ml.get('risk_level', '')}\n"
-            f"检测摘要：{tongue_ml.get('summary', '')}\n"
             f"检测到特征：{labels}\n"
             f"健康风险提示：{risks}\n"
             f"详细检测：\n{details}"
@@ -84,8 +92,8 @@ def _build_prompt(patient: dict, tongue_ml: Optional[dict], pulse_analysis: Opti
         lines.append("\n【舌象分析】\n暂无舌象数据。")
 
     if pulse_analysis:
-        sbp = pulse_analysis.get("sbp")
-        dbp = pulse_analysis.get("dbp")
+        sbp = pulse_analysis.sbp
+        dbp = pulse_analysis.dbp
         if sbp is not None and dbp is not None:
             lines.append(
                 f"\n【脉象分析】（来源：血压预测模型）\n"
@@ -106,9 +114,9 @@ def _build_prompt(patient: dict, tongue_ml: Optional[dict], pulse_analysis: Opti
 
 async def generate_diagnosis(
     session_id: str,
-    patient: dict,
-    tongue_ml: Optional[dict] = None,
-    pulse_analysis: Optional[dict] = None,
+    patient: PatientInfo,
+    tongue_ml: Optional[TongueAnalysis] = None,
+    pulse_analysis: Optional[PulseAnalysis] = None,
 ) -> dict:
     """
     调用 DeepSeek 生成中医辨证报告。
@@ -141,6 +149,10 @@ async def generate_diagnosis(
     data = json.loads(resp.choices[0].message.content)
     data["session_id"]           = session_id
     data["generated_at"]         = datetime.now(timezone.utc).isoformat()
+    data["pattern"] = data.get("pattern", {"zh": [], "en": []})
+    data["summary"] = data.get("summary", {"zh": [], "en": []})
+    data["advice"] = data.get("advice", {"zh": [], "en": []})
+    data["disclaimer"] = data.get("disclaimer", {"zh": [], "en": []})
     data["food_recommendations"] = data.get("food_recommendations", {"zh": [], "en": []})
     data["foods_to_avoid"]       = data.get("foods_to_avoid", {"zh": [], "en": []})
     return data
