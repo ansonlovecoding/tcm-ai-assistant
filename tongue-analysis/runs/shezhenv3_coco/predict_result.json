@@ -1,0 +1,80 @@
+{
+  "image": "TESTDATA\\TESTDATA3.jpg",
+  "model": "runs\\train-2\\weights\\best.pt",
+  "label_config": "D:\\Study\\DMU MSc\\Block4 Applied AI&Research Method\\Applied AI\\mini project\\tcm-ai-assistant\\tongue-analysis\\coco\\tongue_label_profiles.json",
+  "confidence_threshold": 0.25,
+  "medical_disclaimer": "本结果只适合作为学习、科研和健康风险提示，不能替代医生诊断。This result is only suitable as a reference for learning, research, and health risks, and cannot replace a doctor's diagnosis.",
+  "risk_level": "mild_attention",
+  "summary": "检测到舌象异常信号，优先关注：Abnormal tongue signs detected, should be given priority attention:津液不足风险Risk of Insufficient Body Fluids、阴虚风险Risk of Yin Deficiency、脾虚湿重风险Risk of Spleen Deficiency and Excessive Dampness、寒湿风险Risk of Cold-Dampness、脾胃功能偏弱风险Risk of Weak Spleen Function",
+  "detected_labels": {
+    "白苔舌White coating tongue": 1,
+    "裂纹舌Cracked tongue": 1,
+    "齿痕舌Dentate tongue": 2
+  },
+  "possible_disease_or_health_risks": [
+    {
+      "risk": "津液不足风险Risk of Insufficient Body Fluids",
+      "score": 1.135
+    },
+    {
+      "risk": "阴虚风险Risk of Yin Deficiency",
+      "score": 1.135
+    },
+    {
+      "risk": "脾虚湿重风险Risk of Spleen Deficiency and Excessive Dampness",
+      "score": 1.124
+    },
+    {
+      "risk": "寒湿风险Risk of Cold-Dampness",
+      "score": 0.864
+    },
+    {
+      "risk": "脾胃功能偏弱风险Risk of Weak Spleen Function",
+      "score": 0.864
+    }
+  ],
+  "detections": [
+    {
+      "class_id": 9,
+      "label": "baitaishe",
+      "name": "白苔舌White coating tongue",
+      "confidence": 0.8637,
+      "meaning": "舌苔偏白，常作为寒湿、脾胃功能偏弱或早期外感的观察信号。A white coating on the tongue is often seen as a sign of cold-dampness, weak spleen function, or early external contraction.",
+      "possible_risks": [
+        "寒湿风险Risk of Cold-Dampness",
+        "脾胃功能偏弱风险Risk of Weak Spleen Function"
+      ]
+    },
+    {
+      "class_id": 7,
+      "label": "liewenshe",
+      "name": "裂纹舌Cracked tongue",
+      "confidence": 0.5676,
+      "meaning": "舌面裂纹明显，常作为津液不足、阴虚或长期消化吸收状态异常的观察信号。A cracked tongue is often seen as a sign of insufficient body fluids, yin deficiency, or abnormal digestive function.",
+      "possible_risks": [
+        "津液不足风险Risk of Insufficient Body Fluids",
+        "阴虚风险Risk of Yin Deficiency"
+      ]
+    },
+    {
+      "class_id": 8,
+      "label": "chihenshe",
+      "name": "齿痕舌Dentate tongue",
+      "confidence": 0.2964,
+      "meaning": "舌边齿痕明显，常作为脾虚、湿重或水液代谢偏弱的观察信号。A dentate tongue is often seen as a sign of spleen deficiency, excessive dampness, or weak water metabolism.",
+      "possible_risks": [
+        "脾虚湿重风险Risk of Spleen Deficiency and Excessive Dampness"
+      ]
+    },
+    {
+      "class_id": 8,
+      "label": "chihenshe",
+      "name": "齿痕舌Dentate tongue",
+      "confidence": 0.2654,
+      "meaning": "舌边齿痕明显，常作为脾虚、湿重或水液代谢偏弱的观察信号。A dentate tongue is often seen as a sign of spleen deficiency, excessive dampness, or weak water metabolism.",
+      "possible_risks": [
+        "脾虚湿重风险Risk of Spleen Deficiency and Excessive Dampness"
+      ]
+    }
+  ]
+}
