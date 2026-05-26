@@ -13,13 +13,24 @@ name: tcm-assistant
 
 services:
   api:
-    build: ./api
+    build:
+      context: .
+      dockerfile: api/Dockerfile
     container_name: tcm-api
     ports:
       - "8000:8000"
     volumes:
-      # Mount only the package; requirements installed in the image stay intact.
-      - ./api/app:/app/app
+      # Bind-mount the source for every package the api imports — requirements
+      # installed in the image stay intact. Paths inside the container match
+      # the import names, so /app is the package root on sys.path:
+      #   api.app.main / api.app.models / …
+      #   ai_agent.agent
+      #   pulse.predict / pulse.mock_ppg
+      #   tongue.predict_result_from_bytes
+      - ./api/app:/app/api/app
+      - ./ai_agent:/app/ai_agent:ro
+      - ./pulse:/app/pulse:ro
+      - ./tongue:/app/tongue:ro
     environment:
       PYTHONUNBUFFERED: "1"
     env_file:
