@@ -13,7 +13,7 @@ if not os.getenv('DEEPSEEK_API_KEY'):
     BASE_DIR = os.path.dirname(os.path.dirname(__file__))
     load_dotenv(os.path.join(BASE_DIR, ".env"))
 
-print(f'DEEPSEEK_API_KEY: {os.getenv("DEEPSEEK_API_KEY")}')
+# print(f'DEEPSEEK_API_KEY: {os.getenv("DEEPSEEK_API_KEY")}')
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 
 # ---------------------------------------------------------------------------

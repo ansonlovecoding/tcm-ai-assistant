@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api, pickLang } from '../../api.js'
 
@@ -14,11 +14,38 @@ function formatTongueSummary(analysis, lang) {
 
 // `food_recommendations` / `foods_to_avoid` come back as
 // `{zh: [...], en: [...]}` (arrays per language, not single strings).
-// Pick the active locale's array and join into a single readable line.
 function pickFoodList(bi, lang) {
   if (!bi) return []
   const list = bi[lang] ?? bi.zh ?? bi.en ?? []
   return Array.isArray(list) ? list : []
+}
+
+// Static SVG shown while a chip is fetching its Pexels photo, and as the
+// fallback when no photo is found (or the API isn't configured).
+const FOOD_PLACEHOLDER = '/foods/_placeholder.svg'
+
+// In-memory cache of Pexels lookups, keyed by lowercase English food name.
+// Pending lookups store the Promise so concurrent chips for the same food
+// only trigger one network round-trip; resolved entries store the URL (or
+// `null` for "no photo found" so we don't retry forever).
+const _foodImageCache = new Map()
+
+function fetchFoodImage(query) {
+  const key = String(query || '').trim().toLowerCase()
+  if (!key) return Promise.resolve(null)
+  if (_foodImageCache.has(key)) return Promise.resolve(_foodImageCache.get(key))
+
+  const p = api.foodImage(key)
+    .then((r) => r?.url ?? null)
+    .catch(() => null)
+    .then((url) => {
+      // Replace the Promise entry with the resolved value so subsequent
+      // callers get the URL synchronously.
+      _foodImageCache.set(key, url)
+      return url
+    })
+  _foodImageCache.set(key, p)
+  return p
 }
 
 export default function Diagnose({
@@ -35,6 +62,23 @@ export default function Diagnose({
   const [phase, setPhase] = useState('idle') // 'idle' | 'analyzing' | 'done' | 'error'
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
+  // null while no chip is being previewed; { label, src } when the lightbox
+  // is open. Closing the lightbox returns it to null.
+  const [preview, setPreview] = useState(null)
+
+  // Close the preview on Escape. Also lock body scroll while it's open so
+  // the page underneath doesn't drift around when the overlay appears.
+  useEffect(() => {
+    if (!preview) return
+    const onKey = (e) => { if (e.key === 'Escape') setPreview(null) }
+    window.addEventListener('keydown', onKey)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+    }
+  }, [preview])
 
   const start = async () => {
     if (!sessionId) {
@@ -132,8 +176,13 @@ export default function Diagnose({
       )}
 
       {phase === 'done' && result && (() => {
-        const recommendFoods = pickFoodList(result.food_recommendations, lang)
-        const avoidFoods = pickFoodList(result.foods_to_avoid, lang)
+        // Display labels follow the active locale; Pexels lookups always use
+        // the English name (parallel index in the `en` array) because the API
+        // returns much better matches for "Chinese yam" than for "山药".
+        const recLabels = pickFoodList(result.food_recommendations, lang)
+        const recQueries = result.food_recommendations?.en ?? recLabels
+        const avoidLabels = pickFoodList(result.foods_to_avoid, lang)
+        const avoidQueries = result.foods_to_avoid?.en ?? avoidLabels
         return (
           <div className="result-card">
             <div className="ornament" aria-hidden="true">❖</div>
@@ -152,17 +201,37 @@ export default function Diagnose({
               <p className="result-value">{pickLang(result.advice.herbal_tea, lang)}</p>
             </div>
 
-            {recommendFoods.length > 0 && (
+            {recLabels.length > 0 && (
               <div className="result-block">
                 <span className="result-label">{t('diagnose.result_foods_recommended')}</span>
-                <p className="result-value">{recommendFoods.join(lang === 'zh' ? '、' : ', ')}</p>
+                <ul className="food-chips">
+                  {recLabels.map((label, i) => (
+                    <FoodChip
+                      key={`rec-${i}`}
+                      label={label}
+                      query={recQueries[i] || label}
+                      variant="good"
+                      onPreview={setPreview}
+                    />
+                  ))}
+                </ul>
               </div>
             )}
 
-            {avoidFoods.length > 0 && (
+            {avoidLabels.length > 0 && (
               <div className="result-block">
                 <span className="result-label">{t('diagnose.result_foods_avoid')}</span>
-                <p className="result-value">{avoidFoods.join(lang === 'zh' ? '、' : ', ')}</p>
+                <ul className="food-chips">
+                  {avoidLabels.map((label, i) => (
+                    <FoodChip
+                      key={`avoid-${i}`}
+                      label={label}
+                      query={avoidQueries[i] || label}
+                      variant="bad"
+                      onPreview={setPreview}
+                    />
+                  ))}
+                </ul>
               </div>
             )}
 
@@ -173,6 +242,83 @@ export default function Diagnose({
           </div>
         )
       })()}
+
+      {preview && (
+        <div
+          className="food-preview-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label={preview.label}
+          onClick={() => setPreview(null)}
+        >
+          <figure className="food-preview" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="food-preview-close"
+              aria-label={t('diagnose.preview_close')}
+              onClick={() => setPreview(null)}
+            >×</button>
+            <img className="food-preview-img" src={preview.src} alt={preview.label} />
+            <figcaption className="food-preview-caption">{preview.label}</figcaption>
+          </figure>
+        </div>
+      )}
     </div>
+  )
+}
+
+// Single food chip — Pexels photo + label.
+//
+// `label` is what we show next to the image (in the active UI locale).
+// `query` is the search term we send to /api/foods/image — always English
+// because Pexels returns much richer results for "Chinese yam" than for
+// "山药". Both come pre-paired from the parallel zh/en arrays.
+// `onPreview({label, src})` fires when the user clicks a chip that has a
+// real photo (not the placeholder), so the parent can open the lightbox.
+//
+// The img starts on the placeholder SVG, swaps to the fetched URL when the
+// lookup resolves, and falls back to the placeholder again if either the
+// fetch or the image load itself fails.
+function FoodChip({ label, query, variant, onPreview }) {
+  const [src, setSrc] = useState(FOOD_PLACEHOLDER)
+
+  useEffect(() => {
+    let alive = true
+    fetchFoodImage(query).then((url) => {
+      if (alive && url) setSrc(url)
+    })
+    return () => { alive = false }
+  }, [query])
+
+  const handleError = (e) => {
+    if (e.currentTarget.src !== FOOD_PLACEHOLDER) {
+      e.currentTarget.src = FOOD_PLACEHOLDER
+    }
+  }
+
+  const hasRealPhoto = src !== FOOD_PLACEHOLDER
+  const handleClick = () => {
+    if (hasRealPhoto) onPreview?.({ label, src })
+  }
+
+  return (
+    <li>
+      <button
+        type="button"
+        className={`food-chip food-chip-${variant}`}
+        onClick={handleClick}
+        disabled={!hasRealPhoto}
+        title={hasRealPhoto ? label : ''}
+      >
+        <img
+          className="food-chip-img"
+          src={src}
+          alt={label}
+          loading="lazy"
+          onError={handleError}
+        />
+        <span className="food-chip-label">{label}</span>
+      </button>
+    </li>
   )
 }
