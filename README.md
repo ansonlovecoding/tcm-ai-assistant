@@ -146,6 +146,22 @@ open http://localhost:8000/docs    # macOS — or just visit it in the browser
 
 Endpoints are grouped by tag (`Health` · `Sessions` · `Tongue` · `Pulse` · `Diagnose`) and every request and response model carries a worked example, so **Try it out** pre-fills sensible values for clicking through the whole four-step flow.
 
+### Pulse capture — hardware device
+
+The web app captures real PPG (photoplethysmogram) waveforms from a physical **PulseSensor** module — an analogue finger-clip PPG sensor wired to an **Arduino** board.
+
+![PulseSensor](README.assets/pulsesensor.png)
+
+The Arduino sketch reads the PPG signal on pin A0 (10-bit ADC, range `0`–`1023`) and streams one integer sample per line over USB-CDC at **115200 baud**, ~100 Hz. The browser opens the serial port via the [Web Serial API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Serial_API) (Chromium-based browsers only) through `web/src/device/pulse-serial-device.js`, which buffers partial lines, parses each integer sample and surfaces it to the React UI in real time. 
+
+The 256-sample window the captured waveform is sliced into is then handed to the pulse model (see below) to predict `(SBP, DBP)`. Note the small rate mismatch: the firmware emits at ~100 Hz while the model was trained on a 125 Hz dataset — the z-score normalisation in `pulse/predict.py` absorbs the amplitude scale and the difference is acceptable for demo / classroom use.
+
+See [`web/src/device/README.md`](web/src/device/README.md) for the full firmware sketch, the wire protocol table and the JavaScript adapter API.
+
+### Pulse analysis — model architecture
+
+![cnn1d](README.assets/cnn1d.png)
+
 ### Pulse analysis — dataset preprocessing
 
 The `pulse/` module ships with a small pipeline that turns the raw [UCI Cuff-Less Blood Pressure Estimation](https://archive.ics.uci.edu/dataset/340/cuff+less+blood+pressure+estimation) records into model-ready PPG windows with SBP / DBP labels.
@@ -541,6 +557,22 @@ open http://localhost:8000/docs    # macOS — 或直接在浏览器打开
 ```
 
 接口按标签分组（`Health` · `Sessions` · `Tongue` · `Pulse` · `Diagnose`），每个请求与响应模型都附带示例值，**Try it out** 会自动填入合理参数，可一路点击体验完整的四步流程。
+
+### 脉象采集 — 硬件设备
+
+网页端通过真实的 PPG（光电容积描记）传感器采集脉搏波形 —— 由一块 **Arduino** 板搭载 **PulseSensor** 指夹式 PPG 模块组成。
+
+![PulseSensor](README.assets/pulsesensor.png)
+
+Arduino 程序在 A0 引脚读取模拟 PPG 信号（10 位 ADC，范围 `0`–`1023`），通过 USB-CDC 串口以 **115200 波特率**、约 100 Hz 的速率逐行输出整数采样值。浏览器通过 [Web Serial API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Serial_API)（仅 Chromium 内核浏览器支持）打开串口，由 `web/src/device/pulse-serial-device.js` 负责跨包拼接、按行解析整数采样值，并实时回调给 React UI。
+
+采集得到的波形会被切片为 256 个采样点的窗口，交由下文的脉搏模型预测 `(SBP, DBP)`。需要注意采样率存在轻微差异：固件实际输出约 100 Hz，而模型是在 125 Hz 数据集上训练得到的；`pulse/predict.py` 中的 Z-score 归一化会吸收幅值差异，对教学 / 演示场景影响可忽略。
+
+完整的固件源码、串口协议表与 JavaScript 适配器 API 详见 [`web/src/device/README.md`](web/src/device/README.md)。
+
+### 脉象分析 — 模型架构
+
+![cnn1d](README.assets/cnn1d-0083559.png)
 
 ### 脉象分析 — 数据集预处理
 
