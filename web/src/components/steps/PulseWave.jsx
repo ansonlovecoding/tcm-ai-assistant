@@ -8,7 +8,7 @@ const TARGET_SAMPLES = 256
 // Flip to 'serial' when a real Arduino is wired up. With 'mock', the
 // connect/start buttons drive a simulated PPG generator at ~100 Hz so the
 // whole UI flow can be exercised on any browser without hardware.
-const DEVICE_MODE = 'mock' // 'serial' | 'mock'
+const DEVICE_MODE = 'serial' // 'serial' | 'mock'
 const DeviceClass = DEVICE_MODE === 'serial' ? PulseSerialDevice : MockPulseDevice
 
 // Filter all UI-side device logs in DevTools by searching for "[pulse]".
