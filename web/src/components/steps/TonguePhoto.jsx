@@ -1,10 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+// Center-zoom applied to the live preview (via CSS scale) AND to the captured
+// frame (via canvas crop), so the saved image matches what the user framed.
+const CAMERA_ZOOM = 5.5
+
 export default function TonguePhoto({ file, onChange }) {
   const { t } = useTranslation()
   const inputRef = useRef(null)
+  const videoRef = useRef(null)
+  const streamRef = useRef(null)
   const [dragging, setDragging] = useState(false)
+  const [mode, setMode] = useState('upload') // 'upload' | 'camera'
+  const [cameraError, setCameraError] = useState(null)
+  const [cameraReady, setCameraReady] = useState(false)
 
   const tips = t('tongue.tips', { returnObjects: true })
 
@@ -14,6 +23,74 @@ export default function TonguePhoto({ file, onChange }) {
       if (previewUrl) URL.revokeObjectURL(previewUrl)
     }
   }, [previewUrl])
+
+  const stopStream = () => {
+    const s = streamRef.current
+    if (s) {
+      s.getTracks().forEach((tr) => tr.stop())
+      streamRef.current = null
+    }
+    if (videoRef.current) videoRef.current.srcObject = null
+    setCameraReady(false)
+  }
+
+  // Always release the camera on unmount, otherwise the indicator stays on.
+  useEffect(() => () => stopStream(), [])
+
+  // Release the camera when the user leaves camera mode or once a file exists.
+  useEffect(() => {
+    if (mode !== 'camera' || file) stopStream()
+  }, [mode, file])
+
+  const startCamera = async () => {
+    setCameraError(null)
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError(t('tongue.camera_unsupported'))
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' },
+        audio: false
+      })
+      streamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play().catch(() => {})
+      }
+      setCameraReady(true)
+    } catch (e) {
+      setCameraError(e?.message || String(e))
+      stopStream()
+    }
+  }
+
+  const capture = () => {
+    const video = videoRef.current
+    if (!video || !streamRef.current) return
+    const w = video.videoWidth
+    const h = video.videoHeight
+    if (!w || !h) return
+    // Crop the centered region that the CSS scale shows on screen.
+    const sw = w / CAMERA_ZOOM
+    const sh = h / CAMERA_ZOOM
+    const sx = (w - sw) / 2
+    const sy = (h - sh) / 2
+    const canvas = document.createElement('canvas')
+    canvas.width = sw
+    canvas.height = sh
+    canvas.getContext('2d').drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh)
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return
+        const f = new File([blob], `tongue-${Date.now()}.jpg`, { type: 'image/jpeg' })
+        onChange(f)
+        stopStream()
+      },
+      'image/jpeg',
+      0.92
+    )
+  }
 
   const handleFile = (f) => {
     if (!f || !f.type.startsWith('image/')) return
@@ -25,6 +102,11 @@ export default function TonguePhoto({ file, onChange }) {
     e.preventDefault()
     setDragging(false)
     handleFile(e.dataTransfer.files?.[0])
+  }
+
+  const clearImage = () => {
+    onChange(null)
+    setCameraError(null)
   }
 
   return (
@@ -46,6 +128,29 @@ export default function TonguePhoto({ file, onChange }) {
         <h3 className="instruction-title">{t('tongue.upload_title')}</h3>
 
         {!previewUrl && (
+          <div className="upload-mode-toggle" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'upload'}
+              className={`chip ${mode === 'upload' ? 'is-active' : ''}`}
+              onClick={() => setMode('upload')}
+            >
+              {t('tongue.mode_upload')}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'camera'}
+              className={`chip ${mode === 'camera' ? 'is-active' : ''}`}
+              onClick={() => setMode('camera')}
+            >
+              {t('tongue.mode_camera')}
+            </button>
+          </div>
+        )}
+
+        {!previewUrl && mode === 'upload' && (
           <div
             className={`dropzone ${dragging ? 'is-dragging' : ''}`}
             onClick={() => inputRef.current?.click()}
@@ -73,14 +178,46 @@ export default function TonguePhoto({ file, onChange }) {
           </div>
         )}
 
+        {!previewUrl && mode === 'camera' && (
+          <div className="camera">
+            <div className="camera-frame">
+              <video
+                ref={videoRef}
+                className={cameraReady ? 'is-ready' : ''}
+                playsInline
+                muted
+                aria-label={t('tongue.preview_alt')}
+                style={cameraReady ? { transform: `scale(${CAMERA_ZOOM})`, transformOrigin: 'center center' } : undefined}
+              />
+              {!cameraReady && (
+                <p className="camera-placeholder">
+                  {cameraError ? `⚠ ${cameraError}` : t('tongue.camera_idle')}
+                </p>
+              )}
+            </div>
+            <div className="camera-actions">
+              {!cameraReady ? (
+                <button type="button" className="btn btn-primary" onClick={startCamera}>
+                  {t('tongue.camera_start')}
+                </button>
+              ) : (
+                <>
+                  <button type="button" className="btn btn-primary" onClick={capture}>
+                    {t('tongue.camera_capture')}
+                  </button>
+                  <button type="button" className="btn btn-ghost" onClick={stopStream}>
+                    {t('tongue.camera_stop')}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {previewUrl && (
           <div className="preview">
             <img src={previewUrl} alt={t('tongue.preview_alt')} />
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => inputRef.current?.click()}
-            >
+            <button type="button" className="btn btn-ghost" onClick={clearImage}>
               {t('tongue.change')}
             </button>
           </div>
@@ -90,7 +227,6 @@ export default function TonguePhoto({ file, onChange }) {
           ref={inputRef}
           type="file"
           accept="image/*"
-          capture="environment"
           hidden
           onChange={onSelect}
         />

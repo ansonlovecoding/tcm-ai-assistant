@@ -744,6 +744,59 @@ html[data-lang='en'] .bp-manual-title {
   box-shadow: 4px 4px 0 var(--color-gold-deep);
 }
 
+.upload-mode-toggle {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.camera {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.camera-frame {
+  position: relative;
+  min-height: 220px;
+  border: 2px dashed var(--color-gold-deep);
+  background: #1c1714;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.camera-frame video {
+  width: 100%;
+  max-height: 360px;
+  display: none;
+  background: #000;
+}
+
+.camera-frame video.is-ready {
+  display: block;
+  /* Scale is set inline from CAMERA_ZOOM in TonguePhoto.jsx so the preview
+     and the canvas crop stay in sync. */
+}
+
+.camera-placeholder {
+  margin: 0;
+  padding: 24px;
+  text-align: center;
+  color: var(--color-paper);
+  opacity: 0.75;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+.camera-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
 /* ============ STEP 3 DEVICE ============ */
 .device-head {
   display: flex;

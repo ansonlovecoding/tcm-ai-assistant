@@ -64,7 +64,14 @@
     "upload_hint": "点击或拖拽图片到此处 · 支持 JPG / PNG",
     "retake": "重新选择",
     "change": "更换照片",
-    "preview_alt": "舌象预览"
+    "preview_alt": "舌象预览",
+    "mode_upload": "上传文件",
+    "mode_camera": "拍照采集",
+    "camera_idle": "点击「开启摄像头」以开始实时预览",
+    "camera_start": "开启摄像头",
+    "camera_capture": "拍摄",
+    "camera_stop": "关闭摄像头",
+    "camera_unsupported": "当前浏览器不支持摄像头，请改用 Chrome / Edge / Safari，并通过 https:// 或 localhost 访问。"
   },
   "pulse": {
     "device_title": "外部脉诊设备",

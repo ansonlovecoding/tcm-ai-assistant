@@ -64,7 +64,14 @@
     "upload_hint": "Click or drag image here · JPG / PNG supported",
     "retake": "Choose Again",
     "change": "Change Image",
-    "preview_alt": "Tongue preview"
+    "preview_alt": "Tongue preview",
+    "mode_upload": "Upload File",
+    "mode_camera": "Use Camera",
+    "camera_idle": "Tap \"Start Camera\" to begin live preview",
+    "camera_start": "Start Camera",
+    "camera_capture": "Capture",
+    "camera_stop": "Stop Camera",
+    "camera_unsupported": "Your browser does not support camera access. Try Chrome / Edge / Safari over https:// or localhost."
   },
   "pulse": {
     "device_title": "External Pulse Device",
