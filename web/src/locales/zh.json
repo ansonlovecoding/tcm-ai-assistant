@@ -89,7 +89,14 @@
       "采集过程中请勿移动手臂或说话。",
       "建议连续采集 30 秒以上，以获取稳定脉波。"
     ],
-    "waveform_label": "脉波示意"
+    "waveform_label": "脉波示意",
+    "bp_title": "手动录入血压（可选）",
+    "bp_hint": "如有近期袖带测量值，可手动录入以覆盖模型预测。留空则使用设备推算的估值。",
+    "bp_sbp": "收缩压（SBP）",
+    "bp_dbp": "舒张压（DBP）",
+    "bp_unit": "mmHg",
+    "bp_placeholder_sbp": "如 120",
+    "bp_placeholder_dbp": "如 80"
   },
   "diagnose": {
     "summary_title": "信息确认",

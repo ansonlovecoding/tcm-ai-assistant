@@ -153,6 +153,14 @@ class PulseSample(BaseModel):
         None,
         description="pulse sample data, length should be more than 256",
     )
+    sbp: float | None = Field(
+        None,
+        description="Optional manual SBP override (mmHg). Skips model prediction when provided.",
+    )
+    dbp: float | None = Field(
+        None,
+        description="Optional manual DBP override (mmHg). Skips model prediction when provided.",
+    )
 
     model_config = ConfigDict(
         json_schema_extra={

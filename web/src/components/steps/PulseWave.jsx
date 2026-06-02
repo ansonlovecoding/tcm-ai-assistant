@@ -16,7 +16,7 @@ const log = (...args) => console.log('[pulse]', ...args)
 
 // status: 'unsupported' | 'disconnected' | 'connecting' | 'connected'
 //       | 'capturing'   | 'done'         | 'error'
-export default function PulseWave({ captured, waveform, onCapturedChange }) {
+export default function PulseWave({ captured, waveform, onCapturedChange, bp, onBpChange }) {
   const { t } = useTranslation()
 
   const [status, setStatus] = useState(() => {
@@ -232,6 +232,41 @@ export default function PulseWave({ captured, waveform, onCapturedChange }) {
               {t('pulse.disconnect')}
             </button>
           )}
+        </div>
+
+        <div className="bp-manual">
+          <h4 className="bp-manual-title">{t('pulse.bp_title')}</h4>
+          <p className="bp-manual-hint">{t('pulse.bp_hint')}</p>
+          <div className="form-row bp-manual-row">
+            <label className="form-field">
+              <span className="form-label">{t('pulse.bp_sbp')}</span>
+              <div className="input-with-unit">
+                <input
+                  type="number"
+                  min="40"
+                  max="260"
+                  value={bp?.sbp ?? ''}
+                  onChange={(e) => onBpChange?.({ ...bp, sbp: e.target.value })}
+                  placeholder={t('pulse.bp_placeholder_sbp')}
+                />
+                <span className="input-unit">{t('pulse.bp_unit')}</span>
+              </div>
+            </label>
+            <label className="form-field">
+              <span className="form-label">{t('pulse.bp_dbp')}</span>
+              <div className="input-with-unit">
+                <input
+                  type="number"
+                  min="20"
+                  max="200"
+                  value={bp?.dbp ?? ''}
+                  onChange={(e) => onBpChange?.({ ...bp, dbp: e.target.value })}
+                  placeholder={t('pulse.bp_placeholder_dbp')}
+                />
+                <span className="input-unit">{t('pulse.bp_unit')}</span>
+              </div>
+            </label>
+          </div>
         </div>
       </div>
     </div>

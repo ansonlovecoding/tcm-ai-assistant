@@ -89,7 +89,14 @@
       "Do not move your arm or speak during capture.",
       "Capture for at least 30 seconds for a stable waveform."
     ],
-    "waveform_label": "Pulse waveform"
+    "waveform_label": "Pulse waveform",
+    "bp_title": "Manual Blood Pressure (optional)",
+    "bp_hint": "If you have a recent cuff reading, enter it to override the model prediction. Leave blank to use the device-derived estimate.",
+    "bp_sbp": "Systolic (SBP)",
+    "bp_dbp": "Diastolic (DBP)",
+    "bp_unit": "mmHg",
+    "bp_placeholder_sbp": "e.g. 120",
+    "bp_placeholder_dbp": "e.g. 80"
   },
   "diagnose": {
     "summary_title": "Review",

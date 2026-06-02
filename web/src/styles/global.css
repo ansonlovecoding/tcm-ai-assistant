@@ -661,6 +661,38 @@ html[data-lang='en'] .instruction-title {
   gap: 24px;
 }
 
+.bp-manual {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px dashed rgba(139, 26, 26, 0.25);
+}
+
+.bp-manual-title {
+  font-family: var(--font-zh);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--color-cinnabar);
+  margin: 0 0 6px;
+}
+
+html[data-lang='en'] .bp-manual-title {
+  font-family: var(--font-en);
+  letter-spacing: 0.5px;
+  font-size: 16px;
+}
+
+.bp-manual-hint {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-ink-mute);
+}
+
+.bp-manual-row {
+  gap: 18px;
+}
+
 /* ============ UPLOAD (Step 2) ============ */
 .dropzone {
   margin-top: 4px;
