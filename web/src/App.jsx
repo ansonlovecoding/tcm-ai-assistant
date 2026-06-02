@@ -24,6 +24,7 @@ export default function App() {
   const [pulseCaptured, setPulseCaptured] = useState(false)
   const [pulseWaveform, setPulseWaveform] = useState(null)
   const [pulseAnalysis, setPulseAnalysis] = useState(null)
+  const [pulseBp, setPulseBp] = useState({ sbp: '', dbp: '' })
 
   const [transitioning, setTransitioning] = useState(false)
   const [error, setError] = useState(null)
@@ -62,8 +63,22 @@ export default function App() {
       } else if (stepIndex === 2) {
         const sid = sessionId
         if (!sid) throw new Error('missing session')
-        const result = await api.submitPulse(sid, { waveform: pulseWaveform || [] })
-        setPulseAnalysis(result.analysis)
+        const sbp = pulseBp.sbp === '' ? null : Number(pulseBp.sbp)
+        const dbp = pulseBp.dbp === '' ? null : Number(pulseBp.dbp)
+        const hasManualBp = Number.isFinite(sbp) && Number.isFinite(dbp)
+        const hasWaveform = Array.isArray(pulseWaveform) && pulseWaveform.length > 0
+        if (hasManualBp || hasWaveform) {
+          const result = await api.submitPulse(sid, {
+            waveform: pulseWaveform || [],
+            sbp: hasManualBp ? sbp : null,
+            dbp: hasManualBp ? dbp : null
+          })
+          setPulseAnalysis(result.analysis)
+        } else {
+          // Nothing to submit — skip the backend call so we don't trigger
+          // the MockPpg fallback and surface fake SBP/DBP on the report.
+          setPulseAnalysis(null)
+        }
       }
       setStepIndex((i) => Math.min(i + 1, STEP_KEYS.length - 1))
     } catch (e) {
@@ -85,6 +100,7 @@ export default function App() {
     setPulseCaptured(false)
     setPulseWaveform(null)
     setPulseAnalysis(null)
+    setPulseBp({ sbp: '', dbp: '' })
     setSessionId(null)
     setError(null)
     setStepIndex(0)
@@ -105,6 +121,8 @@ export default function App() {
               setPulseCaptured(done)
               setPulseWaveform(done ? waveform : null)
             }}
+            bp={pulseBp}
+            onBpChange={setPulseBp}
           />
         )
       case 'diagnose':

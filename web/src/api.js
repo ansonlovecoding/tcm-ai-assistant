@@ -46,11 +46,13 @@ export const api = {
     })
   },
 
-  submitPulse: (sessionId, { waveform=[] } = {}) =>
+  submitPulse: (sessionId, { waveform = [], sbp = null, dbp = null } = {}) =>
     request(`/sessions/${sessionId}/pulse`, {
       method: 'POST',
       body: JSON.stringify({
-        waveform: waveform
+        waveform,
+        sbp,
+        dbp
       })
     }),
 

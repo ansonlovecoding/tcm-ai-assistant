@@ -270,11 +270,16 @@ def submit_pulse(session_id: str, sample: PulseSample) -> PulseResult:
     capture_id = uuid4().hex[:10]
     print(f"[submit_pulse] {session_id=} {capture_id=} samples={len(waveform)} source={waveform_source}")
 
-    predictor = BloodPressurePredictor()
-    sbp, dbp = predictor.predict(waveform)
+    if sample.sbp is not None and sample.dbp is not None:
+        sbp, dbp = sample.sbp, sample.dbp
+        print(f"Manual SBP: {sbp:.2f}")
+        print(f"Manual DBP: {dbp:.2f}")
+    else:
+        predictor = BloodPressurePredictor()
+        sbp, dbp = predictor.predict(waveform)
+        print(f"Predicted SBP: {sbp:.2f}")
+        print(f"Predicted DBP: {dbp:.2f}")
     analysis = PulseAnalysis(sbp=sbp, dbp=dbp)
-    print(f"Predicted SBP: {sbp:.2f}")
-    print(f"Predicted DBP: {dbp:.2f}")
 
     session.pulse_capture_id = capture_id
     session.pulse_sample_count = len(waveform)

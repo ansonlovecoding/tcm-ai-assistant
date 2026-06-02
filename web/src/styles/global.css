@@ -661,6 +661,38 @@ html[data-lang='en'] .instruction-title {
   gap: 24px;
 }
 
+.bp-manual {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px dashed rgba(139, 26, 26, 0.25);
+}
+
+.bp-manual-title {
+  font-family: var(--font-zh);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--color-cinnabar);
+  margin: 0 0 6px;
+}
+
+html[data-lang='en'] .bp-manual-title {
+  font-family: var(--font-en);
+  letter-spacing: 0.5px;
+  font-size: 16px;
+}
+
+.bp-manual-hint {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-ink-mute);
+}
+
+.bp-manual-row {
+  gap: 18px;
+}
+
 /* ============ UPLOAD (Step 2) ============ */
 .dropzone {
   margin-top: 4px;
@@ -710,6 +742,59 @@ html[data-lang='en'] .instruction-title {
   object-fit: cover;
   border: 1px solid var(--color-gold-deep);
   box-shadow: 4px 4px 0 var(--color-gold-deep);
+}
+
+.upload-mode-toggle {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.camera {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.camera-frame {
+  position: relative;
+  min-height: 220px;
+  border: 2px dashed var(--color-gold-deep);
+  background: #1c1714;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.camera-frame video {
+  width: 100%;
+  max-height: 360px;
+  display: none;
+  background: #000;
+}
+
+.camera-frame video.is-ready {
+  display: block;
+  /* Scale is set inline from CAMERA_ZOOM in TonguePhoto.jsx so the preview
+     and the canvas crop stay in sync. */
+}
+
+.camera-placeholder {
+  margin: 0;
+  padding: 24px;
+  text-align: center;
+  color: var(--color-paper);
+  opacity: 0.75;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+.camera-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 /* ============ STEP 3 DEVICE ============ */
