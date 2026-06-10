@@ -266,6 +266,17 @@ Input shape is `(B, 256, 1)`; the model permutes to `(B, 1, 256)` internally bef
 ```
 Epoch 30/30 done  train_loss=8.6882 train_mae=9.17  |  val_loss=10.5998 val_mae=11.09
   time: train=0:01:21  val=0:00:06  epoch=0:01:27  total=0:43:55  eta=0:00:00
+
+Training finished in 0:42:30
+{
+  "sbp_mae": 12.571809768676758,
+  "dbp_mae": 6.188565731048584,
+  "sbp_rmse": 16.957989113553253,
+  "dbp_rmse": 9.272029728075742,
+  "sbp_r2": 0.43629372119903564,
+  "dbp_r2": 0.31052398681640625,
+  "overall_mae": 9.380187749862671
+}
 ```
 
 **Running it.**
@@ -678,6 +689,17 @@ python build_dataset.py     # 生成 train.npz / val.npz / test.npz
 ```
 Epoch 30/30 done  train_loss=8.6882 train_mae=9.17  |  val_loss=10.5998 val_mae=11.09
   time: train=0:01:21  val=0:00:06  epoch=0:01:27  total=0:43:55  eta=0:00:00
+  
+Training finished in 0:42:30
+{
+  "sbp_mae": 12.571809768676758,
+  "dbp_mae": 6.188565731048584,
+  "sbp_rmse": 16.957989113553253,
+  "dbp_rmse": 9.272029728075742,
+  "sbp_r2": 0.43629372119903564,
+  "dbp_r2": 0.31052398681640625,
+  "overall_mae": 9.380187749862671
+}
 ```
 
 **运行方式。**
