@@ -661,6 +661,38 @@ html[data-lang='en'] .instruction-title {
   gap: 24px;
 }
 
+.bp-manual {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px dashed rgba(139, 26, 26, 0.25);
+}
+
+.bp-manual-title {
+  font-family: var(--font-zh);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--color-cinnabar);
+  margin: 0 0 6px;
+}
+
+html[data-lang='en'] .bp-manual-title {
+  font-family: var(--font-en);
+  letter-spacing: 0.5px;
+  font-size: 16px;
+}
+
+.bp-manual-hint {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-ink-mute);
+}
+
+.bp-manual-row {
+  gap: 18px;
+}
+
 /* ============ UPLOAD (Step 2) ============ */
 .dropzone {
   margin-top: 4px;
@@ -710,6 +742,59 @@ html[data-lang='en'] .instruction-title {
   object-fit: cover;
   border: 1px solid var(--color-gold-deep);
   box-shadow: 4px 4px 0 var(--color-gold-deep);
+}
+
+.upload-mode-toggle {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.camera {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.camera-frame {
+  position: relative;
+  min-height: 220px;
+  border: 2px dashed var(--color-gold-deep);
+  background: #1c1714;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.camera-frame video {
+  width: 100%;
+  max-height: 360px;
+  display: none;
+  background: #000;
+}
+
+.camera-frame video.is-ready {
+  display: block;
+  /* Scale is set inline from CAMERA_ZOOM in TonguePhoto.jsx so the preview
+     and the canvas crop stay in sync. */
+}
+
+.camera-placeholder {
+  margin: 0;
+  padding: 24px;
+  text-align: center;
+  color: var(--color-paper);
+  opacity: 0.75;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+.camera-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 /* ============ STEP 3 DEVICE ============ */
@@ -953,6 +1038,167 @@ html[data-lang='en'] .result-card h3 {
   color: rgba(245, 230, 211, 0.7);
   margin: 22px 0 22px;
   letter-spacing: 1px;
+}
+
+/* Food recommendation / avoid chips inside the result card */
+.food-chips {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.food-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  background: rgba(245, 230, 211, 0.08);
+  border: 1px solid rgba(245, 230, 211, 0.25);
+  color: rgba(245, 230, 211, 0.92);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.food-chip:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: rgba(245, 230, 211, 0.14);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.food-chip:focus-visible {
+  outline: 2px solid rgba(201, 164, 92, 0.85);
+  outline-offset: 2px;
+}
+
+.food-chip:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.food-chip-good {
+  border-color: rgba(201, 164, 92, 0.55);
+  background: rgba(201, 164, 92, 0.14);
+}
+
+.food-chip-good:hover {
+  background: rgba(201, 164, 92, 0.22);
+}
+
+.food-chip-bad {
+  border-color: rgba(184, 64, 64, 0.55);
+  background: rgba(184, 64, 64, 0.14);
+}
+
+.food-chip-bad:hover {
+  background: rgba(184, 64, 64, 0.22);
+}
+
+.food-chip-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: rgba(245, 230, 211, 0.08);
+  box-shadow: 0 0 0 1px rgba(245, 230, 211, 0.2);
+  flex-shrink: 0;
+}
+
+.food-chip-label {
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+/* Slightly tighter padding because the round photo takes more visual room
+   than the old emoji span. */
+.food-chip {
+  padding: 6px 14px 6px 6px;
+}
+
+/* ============ FOOD IMAGE LIGHTBOX ============ */
+.food-preview-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: rgba(20, 12, 6, 0.78);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: food-preview-fade-in 180ms ease-out;
+  cursor: zoom-out;
+}
+
+.food-preview {
+  position: relative;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 92vw;
+  max-height: 92vh;
+  cursor: default;
+}
+
+.food-preview-img {
+  max-width: 100%;
+  max-height: 78vh;
+  object-fit: contain;
+  border-radius: 10px;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.55);
+  background: rgba(245, 230, 211, 0.05);
+}
+
+.food-preview-caption {
+  font-size: 18px;
+  letter-spacing: 1.5px;
+  color: rgba(245, 230, 211, 0.95);
+  text-align: center;
+}
+
+.food-preview-close {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(201, 164, 92, 0.6);
+  background: var(--color-paper, #f5e6d3);
+  color: #5a3a1a;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  transition: transform 120ms ease, background-color 120ms ease;
+}
+
+.food-preview-close:hover {
+  transform: scale(1.06);
+  background: #fff4e0;
+}
+
+.food-preview-close:focus-visible {
+  outline: 2px solid rgba(201, 164, 92, 0.95);
+  outline-offset: 2px;
+}
+
+@keyframes food-preview-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .result-card .btn-ghost {

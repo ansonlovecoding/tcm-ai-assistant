@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Food placeholder">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#f5e6d3"/>
+      <stop offset="100%" stop-color="#e7d2ad"/>
+    </linearGradient>
+  </defs>
+  <!-- bowl -->
+  <ellipse cx="32" cy="22" rx="22" ry="6" fill="#c9a45c" opacity="0.35"/>
+  <path d="M10 22 q22 18 44 0 v6 q0 14 -22 14 t-22 -14 z"
+        fill="url(#paper)" stroke="#8a6a30" stroke-width="1.5"/>
+  <ellipse cx="32" cy="22" rx="22" ry="6" fill="none" stroke="#8a6a30" stroke-width="1.5"/>
+  <!-- steam -->
+  <path d="M22 12 q-3 -5 0 -10" fill="none" stroke="#c9a45c" stroke-width="1.4" stroke-linecap="round" opacity="0.7"/>
+  <path d="M32 10 q-3 -5 0 -10" fill="none" stroke="#c9a45c" stroke-width="1.4" stroke-linecap="round" opacity="0.7"/>
+  <path d="M42 12 q-3 -5 0 -10" fill="none" stroke="#c9a45c" stroke-width="1.4" stroke-linecap="round" opacity="0.7"/>
+</svg>

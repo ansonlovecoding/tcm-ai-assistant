@@ -1,4 +1,20 @@
+# API core
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
 python-multipart==0.0.10
 pydantic==2.9.2
+
+# ai_agent — DeepSeek V3 via the OpenAI-compatible SDK + env loading
+openai==1.51.0
+python-dotenv==1.0.1
+
+# pulse — 1D-CNN blood-pressure predictor (mock_ppg also imports matplotlib)
+torch==2.2.2
+numpy==1.26.4
+matplotlib==3.9.2
+
+# tongue — YOLO predictor runs as a subprocess and needs:
+ultralytics==8.3.0
+opencv-python-headless==4.10.0.84
+Pillow==10.4.0
+PyYAML==6.0.2

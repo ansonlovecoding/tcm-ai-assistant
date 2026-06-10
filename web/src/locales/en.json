@@ -64,7 +64,14 @@
     "upload_hint": "Click or drag image here · JPG / PNG supported",
     "retake": "Choose Again",
     "change": "Change Image",
-    "preview_alt": "Tongue preview"
+    "preview_alt": "Tongue preview",
+    "mode_upload": "Upload File",
+    "mode_camera": "Use Camera",
+    "camera_idle": "Tap \"Start Camera\" to begin live preview",
+    "camera_start": "Start Camera",
+    "camera_capture": "Capture",
+    "camera_stop": "Stop Camera",
+    "camera_unsupported": "Your browser does not support camera access. Try Chrome / Edge / Safari over https:// or localhost."
   },
   "pulse": {
     "device_title": "External Pulse Device",
@@ -89,7 +96,14 @@
       "Do not move your arm or speak during capture.",
       "Capture for at least 30 seconds for a stable waveform."
     ],
-    "waveform_label": "Pulse waveform"
+    "waveform_label": "Pulse waveform",
+    "bp_title": "Manual Blood Pressure (optional)",
+    "bp_hint": "If you have a recent cuff reading, enter it to override the model prediction. Leave blank to use the device-derived estimate.",
+    "bp_sbp": "Systolic (SBP)",
+    "bp_dbp": "Diastolic (DBP)",
+    "bp_unit": "mmHg",
+    "bp_placeholder_sbp": "e.g. 120",
+    "bp_placeholder_dbp": "e.g. 80"
   },
   "diagnose": {
     "summary_title": "Review",
@@ -109,6 +123,9 @@
     "result_pattern_value": "Qi and Yin Deficiency · Liver Qi Stagnation with Spleen Deficiency (sample)",
     "result_advice": "Suggestions",
     "result_advice_value": "Soothe the liver, strengthen the spleen, supplement Qi and nourish Yin. Keep a regular schedule, eat lightly, exercise moderately. Reference herbal tea: Tai Zi Shen, Mai Dong, Chen Pi.",
+    "result_foods_recommended": "Recommended Foods",
+    "result_foods_avoid": "Foods to Avoid",
+    "preview_close": "Close preview",
     "disclaimer": "※ This report is for reference only. Please consult a licensed TCM practitioner for diagnosis.",
     "restart": "Start Over"
   },

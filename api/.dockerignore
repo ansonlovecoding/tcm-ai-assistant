@@ -11,3 +11,9 @@ venv
 *.log
 README.md
 run.sh
+../.venv
+../pulse/dataset
+../.claude
+../tongue/dataset
+../tongue/runs
+../tongue/.vscode
