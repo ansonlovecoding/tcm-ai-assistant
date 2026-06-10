@@ -19,7 +19,7 @@
 code/
 ├── web/              React + Vite single-page app (Chinese / English bilingual UI)
 ├── api/              FastAPI service exposing the endpoints consumed by the web app
-├── ai_agent/         AI agent that synthesises patient info, tongue and pulse
+├── ai_llm/         AI agent that synthesises patient info, tongue and pulse
 │                     results into a TCM pattern-differentiation report
 ├── tongue/           Model training & inference for tongue images (YOLO)
 ├── pulse/            Model training & inference for pulse waveforms (CNN1D → SBP/DBP)
@@ -35,7 +35,7 @@ Module responsibilities:
 |-------------|---------------------------------------------------------------------------------------------------------------------------|
 | `web`       | Four-step UI: patient info → tongue photo → pulse capture → AI diagnosis. Traditional Chinese styling, Chinese & English. |
 | `api`       | FastAPI HTTP layer. Validates input, stores sessions, returns bilingual analyses.                                         |
-| `ai_agent`  | DeepSeek V3-backed agent. Builds a prompt from patient info + tongue + pulse and returns a structured bilingual diagnosis.|
+| `ai_llm`  | DeepSeek V3-backed agent. Builds a prompt from patient info + tongue + pulse and returns a structured bilingual diagnosis.|
 | `tongue`    | YOLO model that detects tongue features (coating, shape, cracks…) plus a rule engine for health-risk hints.               |
 | `pulse`     | 1D-CNN that turns a 256-sample PPG window into an `(SBP, DBP)` blood-pressure prediction.                                 |
 
@@ -102,7 +102,7 @@ the Python modules also fall back to `load_dotenv(<repo>/.env)` so the manual
 
 | Variable                  | Required by                                       | What it's for                                                                                          |
 |---------------------------|---------------------------------------------------|--------------------------------------------------------------------------------------------------------|
-| `DEEPSEEK_API_KEY`        | `ai_agent/agent.py`                               | DeepSeek V3 (`deepseek-chat`) — the LLM that generates the final TCM pattern. Get one at <https://platform.deepseek.com>. Without it the `/api/sessions/{id}/diagnose` endpoint cannot produce real output. |
+| `DEEPSEEK_API_KEY`        | `ai_llm/agent.py`                               | DeepSeek V3 (`deepseek-chat`) — the LLM that generates the final TCM pattern. Get one at <https://platform.deepseek.com>. Without it the `/api/sessions/{id}/diagnose` endpoint cannot produce real output. |
 | `PEXELS_API_KEY`          | `api/app/pexels.py` → `GET /api/foods/image`      | Pexels Photo Search — used to fetch real photos for the food chips in the diagnosis result card. Get a free key at <https://www.pexels.com/api/>. If unset, chips fall back to the placeholder SVG and the rest of the app still works. |
 | `TCM_PULSE_ANALYSIS_ROOT` | `api/app/pulse_predictor.py` (optional)           | Overrides the directory where the API looks for the `pulse/` package. Defaults to the repo's sibling `pulse/`; useful inside Docker where it's mounted at `/pulse`. |
 | `TCM_PULSE_MODEL_PATH`    | `api/app/pulse_predictor.py` (optional)           | Overrides the pulse CNN checkpoint path. Defaults to `<TCM_PULSE_ANALYSIS_ROOT>/best_model.pth`.       |
@@ -379,21 +379,21 @@ Every user-facing string follows the project's `{zh, en}` convention so the fron
 
 ### AI Agent — overview
 
-`ai_agent/` is the LLM-powered layer that turns the patient info, tongue model output and pulse SBP/DBP prediction into a finished TCM pattern-differentiation report. It uses **DeepSeek V3** (`deepseek-chat`) via the OpenAI-compatible API (`AsyncOpenAI`).
+`ai_llm/` is the LLM-powered layer that turns the patient info, tongue model output and pulse SBP/DBP prediction into a finished TCM pattern-differentiation report. It uses **DeepSeek V3** (`deepseek-chat`) via the OpenAI-compatible API (`AsyncOpenAI`).
 
 | Item                    | Location                                                                                  |
 |-------------------------|-------------------------------------------------------------------------------------------|
-| Public entry point      | `ai_agent/agent.py` → `async generate_diagnosis(session_id, patient, tongue_ml, pulse_analysis)` |
-| System prompt           | `ai_agent/agent.py` (`SYSTEM_PROMPT` constant)                                            |
+| Public entry point      | `ai_llm/agent.py` → `async generate_diagnosis(session_id, patient, tongue_ml, pulse_analysis)` |
+| System prompt           | `ai_llm/agent.py` (`SYSTEM_PROMPT` constant)                                            |
 | Prompt builder          | `_build_prompt(patient, tongue_ml, pulse_analysis)` — formats the three inputs in Chinese for the LLM |
-| Module docs             | [`ai_agent/README.md`](ai_agent/README.md)                                                |
+| Module docs             | [`ai_llm/README.md`](ai_llm/README.md)                                                |
 | Auth                    | Reads `DEEPSEEK_API_KEY` from the environment / `.env` (see [Environment variables](#environment-variables)) |
 
 The agent returns a dictionary that maps **directly** onto the `DiagnosisResult` pydantic model — every user-facing string is bilingual `{zh, en}`, and the food lists are `{zh: [...], en: [...]}` to feed the result-card chips on the web.
 
 ### AI Agent — diagnosis flow
 
-`POST /api/sessions/{id}/diagnose` is wired to `ai_agent.agent.generate_diagnosis`. The flow:
+`POST /api/sessions/{id}/diagnose` is wired to `ai_llm.agent.generate_diagnosis`. The flow:
 
 1. The endpoint pulls the stored `PatientInfo`, `TongueAnalysis` (from step 2) and `PulseAnalysis` (from step 3) out of the session store.
 2. `_build_prompt(...)` composes a Chinese-language user message that summarises:
@@ -430,6 +430,45 @@ The agent returns a dictionary that maps **directly** onto the `DiagnosisResult`
 
 If `DEEPSEEK_API_KEY` is missing the agent call raises at request time. Without it the diagnose endpoint cannot produce real output — set the key in `.env` before running the full flow.
 
+### Local RAG — `ai_llm/rag.py`
+
+The agent does not let the LLM interpret tongue features on its own. Before each DeepSeek call, `ai_llm/rag.py` retrieves matching passages from a small local TCM knowledge base and injects them into the prompt as `【知识库依据】`. The LLM is then explicitly instructed (in `SYSTEM_PROMPT`) to ground its interpretation on those passages and to note when no passage applies.
+
+**Knowledge base** — plain UTF-8 text files under `ai_llm/kb/`. `.json` files in this directory are skipped on purpose, so the KB can be extended just by dropping new `.txt` files in.
+
+| File                                  | Type          | Loader                |
+|---------------------------------------|---------------|-----------------------|
+| `中医诊断学-望舌头篇`                  | Theory        | `_load_theory_file`   |
+| `中医望诊与舌诊彩色图解-第五章.txt`     | Clinical cases | `_load_case_file`     |
+
+The right loader is picked by sniffing the first 3000 bytes: if both `舌象特征` and `初诊时间` appear, the file is treated as case material; otherwise it is parsed as theory.
+
+**Chunking strategies**
+
+- *Theory* — split on runs of blank lines (`\n{2,}`); keep paragraphs whose length ≥ `MIN_CHUNK_LEN = 35`.
+- *Case* — regex-extract each numbered case header, then pull the `舌象特征 / 中医诊断 / 治则治法` blocks out of its body and stitch them into a single line like `1. 湿热证 风寒袭表 | 舌象：舌淡红苔薄白 | 诊断：风寒表证 | 治法：辛温解表`. Cases with no tongue snippet are dropped. If no case header matches, the loader falls back to paragraph chunking.
+
+**Label → keyword expansion** — YOLO emits English label slugs (`chihenshe`, `baitaishe`, …) that have no overlap with the Chinese KB vocabulary. `LABEL_TERMS` (in `rag.py`) maps each slug to a short Chinese keyword string, e.g.
+
+```text
+chihenshe → "齿痕舌 齿痕 脾虚 湿盛 水液代谢"
+baitaishe → "白苔 苔白 寒湿 表证 脾胃功能偏弱"
+```
+
+All detected slugs are joined with spaces into a single query — there is no per-label loop, and slugs that are not in `LABEL_TERMS` are silently dropped (so partial coverage degrades gracefully).
+
+**Index** — `TfidfVectorizer(analyzer="char", ngram_range=(1, 3), min_df=1, sublinear_tf=True)`. Character n-grams are used instead of word tokens specifically to avoid pulling in a Chinese tokenizer; n-grams cover both Chinese and the occasional Latin term. The index is built lazily on the first `retrieve()` call by a module-level `TongueKnowledgeBase` singleton, so importing `rag` is cheap.
+
+**Retrieval** — `retrieve(detected_labels, top_k=5, min_sim=0.05)`:
+
+1. Build the query string from `LABEL_TERMS`. If no slug matches, return `[]`.
+2. Vectorise the query and compute cosine similarity against every indexed chunk.
+3. Walk hits in descending similarity, breaking as soon as `similarity < min_sim`.
+4. Deduplicate by the first 80 characters of the chunk text (keeps near-identical fragments from drowning out diverse evidence).
+5. Stop at `top_k` results. Each result: `{"text": str, "source": str, "similarity": float}`.
+
+**Integration with the agent** — `agent.generate_diagnosis` calls `rag.retrieve(detected_labels, top_k=5)` with the deduped slugs from the YOLO output, passes the hits to `_build_rag_context(evidence)`, and the resulting block is appended to the user message under `【知识库依据】（来源：本地中医文献向量检索，请以此解读舌象含义）`. The same `evidence` list is also returned in the diagnose response so the frontend can show what the LLM was grounded on.
+
 ### Disclaimer
 
 This project is for **research and educational purposes only**. The AI output does **not** constitute a medical diagnosis. Always consult a licensed TCM practitioner.
@@ -448,7 +487,7 @@ This project is for **research and educational purposes only**. The AI output do
 code/
 ├── web/              React + Vite 单页面应用（中英双语界面）
 ├── api/              FastAPI 服务，向 web 端提供所需接口
-├── ai_agent/         智能体：根据基本信息、舌象与脉象生成中医辨证报告
+├── ai_llm/         智能体：根据基本信息、舌象与脉象生成中医辨证报告
 ├── tongue/           舌象图像模型的训练与推理（YOLO）
 ├── pulse/            脉象波形的训练与推理（CNN1D → SBP / DBP 预测）
 ├── docker-compose.yml
@@ -463,7 +502,7 @@ code/
 |--------------|---------------------------------------------------------------------------------------------------|
 | `web`        | 四步式问诊界面：基本信息 → 舌象采集 → 脉象采集 → 智能辨证。古典中医风格，中英双语。                |
 | `api`        | FastAPI 接口层，校验请求、维护会话、返回中英双语的辨证数据。                                       |
-| `ai_agent`   | 基于 DeepSeek V3 的智能体；将基本信息、舌象与脉象组合成 prompt，输出结构化的双语辨证报告。         |
+| `ai_llm`   | 基于 DeepSeek V3 的智能体；将基本信息、舌象与脉象组合成 prompt，输出结构化的双语辨证报告。         |
 | `tongue`     | YOLO 舌象检测模型，识别舌质、舌苔、舌形等特征，并通过规则引擎输出健康风险提示。                    |
 | `pulse`      | 1D-CNN 模型，将 256 个采样点的 PPG 窗口映射为 `(SBP, DBP)` 血压预测。                              |
 
@@ -528,7 +567,7 @@ cp env.example .env
 
 | 变量名                    | 谁需要                                            | 用途                                                                                                                                       |
 |---------------------------|---------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
-| `DEEPSEEK_API_KEY`        | `ai_agent/agent.py`                               | DeepSeek V3（`deepseek-chat`）— 生成最终辨证报告的 LLM。前往 <https://platform.deepseek.com> 申请。未设置时 `/api/sessions/{id}/diagnose` 无法产出真实结果。 |
+| `DEEPSEEK_API_KEY`        | `ai_llm/agent.py`                               | DeepSeek V3（`deepseek-chat`）— 生成最终辨证报告的 LLM。前往 <https://platform.deepseek.com> 申请。未设置时 `/api/sessions/{id}/diagnose` 无法产出真实结果。 |
 | `PEXELS_API_KEY`          | `api/app/pexels.py` → `GET /api/foods/image`      | Pexels 图片搜索；用于在辨证结果页的食材 chip 上展示真实照片。免费 key 申请：<https://www.pexels.com/api/>。未设置时 chip 仅显示占位 SVG，应用其他功能不受影响。 |
 | `TCM_PULSE_ANALYSIS_ROOT` | `api/app/pulse_predictor.py`（可选）              | 覆盖 API 查找 `pulse/` 包的根目录。默认指向仓库同级目录下的 `pulse/`；在 Docker 中通常设为 `/pulse`。                                       |
 | `TCM_PULSE_MODEL_PATH`    | `api/app/pulse_predictor.py`（可选）              | 覆盖脉搏模型权重路径。默认为 `<TCM_PULSE_ANALYSIS_ROOT>/best_model.pth`。                                                                  |
@@ -801,21 +840,21 @@ print(f"Predicted DBP: {dbp:.2f}")
 
 ### AI Agent — 概览
 
-`ai_agent/` 是基于 LLM 的辨证层，把基本信息、舌象模型输出与脉搏 SBP/DBP 预测组合成完整的中医辨证报告。底层模型为 **DeepSeek V3**（`deepseek-chat`），通过 OpenAI 兼容接口（`AsyncOpenAI`）调用。
+`ai_llm/` 是基于 LLM 的辨证层，把基本信息、舌象模型输出与脉搏 SBP/DBP 预测组合成完整的中医辨证报告。底层模型为 **DeepSeek V3**（`deepseek-chat`），通过 OpenAI 兼容接口（`AsyncOpenAI`）调用。
 
 | 内容                | 路径                                                                                                |
 |---------------------|-----------------------------------------------------------------------------------------------------|
-| 对外入口            | `ai_agent/agent.py` → `async generate_diagnosis(session_id, patient, tongue_ml, pulse_analysis)`    |
-| 系统 prompt         | `ai_agent/agent.py` 中的 `SYSTEM_PROMPT` 常量                                                       |
+| 对外入口            | `ai_llm/agent.py` → `async generate_diagnosis(session_id, patient, tongue_ml, pulse_analysis)`    |
+| 系统 prompt         | `ai_llm/agent.py` 中的 `SYSTEM_PROMPT` 常量                                                       |
 | Prompt 构造         | `_build_prompt(patient, tongue_ml, pulse_analysis)` —— 将三类输入拼成中文 prompt                    |
-| 模块说明            | [`ai_agent/README.md`](ai_agent/README.md)                                                          |
+| 模块说明            | [`ai_llm/README.md`](ai_llm/README.md)                                                          |
 | 鉴权                | 从环境变量 / `.env` 读取 `DEEPSEEK_API_KEY`（详见[环境变量](#环境变量)）                            |
 
 Agent 的返回值可**直接**喂给 `DiagnosisResult` pydantic 模型：所有面向用户的文案均为 `{zh, en}`，食材列表为 `{zh: [...], en: [...]}`，与结果页 chip 的渲染一一对应。
 
 ### AI Agent — 辨证流程
 
-`POST /api/sessions/{id}/diagnose` 接到请求后会调用 `ai_agent.agent.generate_diagnosis`，整体流程：
+`POST /api/sessions/{id}/diagnose` 接到请求后会调用 `ai_llm.agent.generate_diagnosis`，整体流程：
 
 1. 从会话存储中取出该 session 的 `PatientInfo`、`TongueAnalysis`（步骤 2 上传得到）与 `PulseAnalysis`（步骤 3 采集得到）。
 2. `_build_prompt(...)` 用中文整理出一段用户消息，内容包括：
@@ -851,6 +890,45 @@ Agent 的返回值可**直接**喂给 `DiagnosisResult` pydantic 模型：所有
 ```
 
 若未设置 `DEEPSEEK_API_KEY`，调用 DeepSeek 时会抛出鉴权异常，`/diagnose` 端点无法生成真实结果。完整体验请先在 `.env` 中填入 key。
+
+### 本地 RAG —— `ai_llm/rag.py`
+
+智能体并不让 LLM 单凭舌象标签自行推断含义。每次调用 DeepSeek 之前，`ai_llm/rag.py` 会先在本地中医知识库中检索相关文献片段，作为 `【知识库依据】` 注入 prompt。`SYSTEM_PROMPT` 中明确约束：模型必须依据这些片段解读舌象，若无匹配依据须如实说明"当前知识库无对应记录"。
+
+**知识库** —— `ai_llm/kb/` 下的纯文本文件（UTF-8）。该目录中的 `.json` 文件会被显式跳过，因此扩展知识库时只需新增 `.txt` 文件即可。
+
+| 文件                                  | 类型     | 加载器                |
+|---------------------------------------|----------|-----------------------|
+| `中医诊断学-望舌头篇`                  | 理论篇   | `_load_theory_file`   |
+| `中医望诊与舌诊彩色图解-第五章.txt`     | 临床案例 | `_load_case_file`     |
+
+加载器通过嗅探文件前 3000 字节自动选择：若同时出现 `舌象特征` 与 `初诊时间` 则按"案例"解析；否则按"理论"解析。
+
+**切分策略**
+
+- *理论篇* —— 按连续空行（`\n{2,}`）分段，保留长度 ≥ `MIN_CHUNK_LEN = 35` 的段落。
+- *案例篇* —— 用正则定位每条带编号的案例标题，再从案例正文中提取 `舌象特征 / 中医诊断 / 治则治法` 三段，拼成形如 `1. 湿热证 风寒袭表 | 舌象：舌淡红苔薄白 | 诊断：风寒表证 | 治法：辛温解表` 的单行片段。无舌象的案例直接丢弃；若没有任何案例标题命中，则回退到按段落切分。
+
+**标签关键词扩展** —— YOLO 输出英文 slug（`chihenshe`、`baitaishe` 等）与中文知识库词汇毫无重叠。`rag.py` 中的 `LABEL_TERMS` 将每个 slug 映射为一段中文关键词，例如：
+
+```text
+chihenshe → "齿痕舌 齿痕 脾虚 湿盛 水液代谢"
+baitaishe → "白苔 苔白 寒湿 表证 脾胃功能偏弱"
+```
+
+所有命中的 slug 会被空格拼接为**单条查询**——不是对每个标签单独检索；不在 `LABEL_TERMS` 中的 slug 会被静默忽略，确保覆盖不全时也能平滑降级。
+
+**索引** —— `TfidfVectorizer(analyzer="char", ngram_range=(1, 3), min_df=1, sublinear_tf=True)`。刻意采用字符 n-gram 而非词级 token，避免引入中文分词器，n-gram 同时也兼容个别的英文术语。索引在首次调用 `retrieve()` 时由模块级单例 `TongueKnowledgeBase` 懒加载构建，因此 `import ai_llm.rag` 本身开销很小。
+
+**检索流程** —— `retrieve(detected_labels, top_k=5, min_sim=0.05)`：
+
+1. 用 `LABEL_TERMS` 拼出查询字符串；若无 slug 命中，直接返回 `[]`。
+2. 将查询向量化，与全部 chunk 的 TF-IDF 矩阵做余弦相似度。
+3. 按相似度降序遍历，一旦 `similarity < min_sim` 立即停止。
+4. 以 chunk 首 80 字符作为 key 去重，避免近似片段挤占名额。
+5. 最多保留 `top_k` 条结果，每条形如 `{"text": str, "source": str, "similarity": float}`。
+
+**与 Agent 的衔接** —— `agent.generate_diagnosis` 先用去重后的 YOLO slug 调用 `rag.retrieve(detected_labels, top_k=5)`，将命中结果交给 `_build_rag_context(evidence)` 渲染为 `【知识库依据】（来源：本地中医文献向量检索，请以此解读舌象含义）` 块，追加到用户消息末尾。同一份 `evidence` 也会随诊断响应返回前端，方便页面展示模型所依据的具体片段。
 
 ### 免责声明
 

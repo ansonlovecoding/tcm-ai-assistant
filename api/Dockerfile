@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Install all Python deps for the api itself **and** every sibling package
-# main.py imports: ai_agent (openai, python-dotenv), pulse (torch, numpy,
+# main.py imports: ai_llm (openai, python-dotenv), pulse (torch, numpy,
 # matplotlib) and tongue (ultralytics, opencv, Pillow, PyYAML).
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -26,7 +26,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 #
 #   /app/
 #   ├── api/app/...    (mounted from ./api/app)
-#   ├── ai_agent/...   (mounted from ./ai_agent)
+#   ├── ai_llm/...   (mounted from ./ai_llm)
 #   ├── pulse/...      (mounted from ./pulse)
 #   └── tongue/...     (mounted from ./tongue)
 #
@@ -40,13 +40,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # and add these COPY lines back above the EXPOSE line:
 #
 COPY api/app   ./api/app
-COPY ai_agent  ./ai_agent
+COPY ai_llm  ./ai_llm
 COPY pulse     ./pulse
 COPY tongue    ./tongue
 
 EXPOSE 8000
 
 # Run via `python -m uvicorn` so the CWD (/app) is on sys.path — that's what
-# lets `import api.app.main`, `import ai_agent.agent`, `import pulse.predict`,
+# lets `import api.app.main`, `import ai_llm.agent`, `import pulse.predict`,
 # `import tongue.predict_result_from_bytes` all resolve from the same root.
 CMD ["python", "-m", "uvicorn", "api.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

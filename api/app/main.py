@@ -32,7 +32,7 @@ from . import pexels
 from pulse.mock_ppg import MockPpg
 from pulse.predict import BloodPressurePredictor
 from tongue.predict_result_from_bytes import generate_predict_result_json_from_bytes
-from ai_agent.agent import generate_diagnosis
+from ai_llm.agent import generate_diagnosis
 from dotenv import load_dotenv
 
 # Number of consecutive PPG samples the CNN1D model expects (see pulse/train.py).
